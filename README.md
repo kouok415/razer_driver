@@ -28,6 +28,8 @@ Not affiliated with or endorsed by Razer.*
 用 Chrome 打開 **https://kouok415.github.io/razer_driver/**（push 到 `master` 時由
 GitHub Actions 自動部署）。
 
+診斷頁 **https://kouok415.github.io/razer_driver/probe.html** 只讀取、不寫入，用來檢查 Chrome 的 WebUSB / WebHID 看得到鍵盤的哪些介面，並產生一份可貼回的報告（不含序號）。
+
 ## 本機執行
 
 ```sh

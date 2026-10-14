@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>鍵盤連線診斷 / Keyboard connection check</title>
+  </head>
+  <body>
+    <main class="probe">
+      <h1>鍵盤連線診斷 <span lang="en">Keyboard connection check</span></h1>
+
+      <p>
+        這個頁面會檢查 Chrome 能不能透過 WebUSB 和 WebHID 這兩種方式看到你的
+        Razer Huntsman V3 Pro TKL，並產生一份文字報告，請你貼回給開發者。
+      </p>
+      <p lang="en">
+        This page checks whether Chrome can see your Razer Huntsman V3 Pro TKL through two browser
+        features, WebUSB and WebHID, and produces a text report for you to paste back to the
+        developer.
+      </p>
+
+      <p class="probe-safety">
+        <strong>它只會讀取資訊，不會改變鍵盤上的任何設定。</strong><br />
+        <strong lang="en">It only reads. It changes nothing on your keyboard.</strong>
+      </p>
+
+      <p>
+        報告不包含鍵盤的序號，只有鍵盤的 USB 資訊和你的瀏覽器版本。報告不會自動上傳，只有你自己複製、貼上時才會離開這個頁面。每項檢查結束後，這個頁面會自動放棄對鍵盤的存取權限。
+      </p>
+      <p lang="en">
+        The report does not include your keyboard's serial number, only the keyboard's USB details
+        and your browser version. Nothing is uploaded: the report leaves this page only when you copy
+        and paste it yourself. After each check, the page gives up its access to the keyboard.
+      </p>
+
+      <h2>步驟 <span lang="en">Steps</span></h2>
+      <ol>
+        <li>
+          用 USB 線把鍵盤接到 Mac，並用 Chrome 打開這個頁面。<br />
+          <span lang="en">Connect the keyboard to your Mac with its USB cable and open this page in Chrome.</span>
+        </li>
+        <li>
+          按「1. 檢查 WebUSB」。Chrome 跳出視窗後，選擇 Razer 鍵盤，再按「連線」。如果清單是空的，直接按「取消」也可以，報告會記下這個結果。<br />
+          <span lang="en">
+            Click “1. Check WebUSB”. When Chrome shows a pop-up, select the Razer keyboard and click
+            “Connect”. If the list is empty, just click “Cancel”; the report records that too.
+          </span>
+        </li>
+        <li>
+          按「2. 檢查 WebHID」，同樣選擇 Razer 鍵盤，再按「連線」。<br />
+          <span lang="en">Click “2. Check WebHID”, select the Razer keyboard again and click “Connect”.</span>
+        </li>
+        <li>
+          按「複製報告」，把內容貼回對話裡。<br />
+          <span lang="en">Click “Copy report” and paste it back into the conversation.</span>
+        </li>
+      </ol>
+
+      <div class="probe-actions">
+        <button type="button" id="probe-usb">1. 檢查 WebUSB / Check WebUSB</button>
+        <button type="button" id="probe-hid">2. 檢查 WebHID / Check WebHID</button>
+      </div>
+
+      <p id="probe-status" class="probe-status" role="status"></p>
+
+      <label for="probe-report">報告 <span lang="en">Report</span></label>
+      <textarea
+        id="probe-report"
+        readonly
+        spellcheck="false"
+        placeholder="按上面的檢查按鈕後，報告會出現在這裡。 / The report appears here after you click a check button above."
+      ></textarea>
+
+      <div class="probe-actions">
+        <button type="button" id="probe-copy">複製報告 / Copy report</button>
+      </div>
+    </main>
+    <script type="module" src="/src/probe/main.ts"></script>
+  </body>
+</html>

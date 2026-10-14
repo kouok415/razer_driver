@@ -36,3 +36,29 @@ new entry that references and supersedes the old one.
 ---
 
 <!-- Add new ADRs below this line. Numbering starts at ADR-001. -->
+
+## ADR-001: Static WebHID web app in TypeScript + React + Vite
+
+- **Date:** 2026-10-14
+- **Status:** Accepted
+- **Context:** Owner's Razer Huntsman V3 Pro TKL (RZ03-0498, 1532:02A7)
+  has no working configurator on macOS: Synapse does not run there, and
+  Razer's Synapse Web lists only the 8KHz model (RZ03-0552). Owner asked
+  for a "web driver" with Synapse-like features.
+- **Decision:** A static, client-only web app using WebHID, written in
+  TypeScript + React 19 + Vite, tested with Vitest (units) and Playwright
+  (E2E in headless Chromium). Owner picked the stack from three options.
+- **Rationale:** WebHID needs no kernel extension, installer or native
+  helper on macOS; a static site can run from localhost or any HTTPS host.
+  React was chosen over Svelte / plain TS for its ecosystem for complex
+  editors (per-key keyboard layout, macro editor).
+- **Alternatives considered:** Svelte + Vite (smaller bundles, smaller
+  ecosystem); plain TS (state management too costly for this UI); native
+  macOS app via IOKit or Electron + node-hid (rejected: owner asked for
+  web, and install friction); porting zexrox's Chrome-extension + Python
+  bridge that spoofs the device into Synapse Web (rejected: depends on
+  Razer's site not changing, and needs Python + native messaging).
+- **Consequences:** Chromium-only (no Firefox/Safari). Anything Synapse
+  does in host software rather than firmware — animated Chroma effects,
+  host-executed macros — only runs while the tab is open; onboard
+  (firmware-stored) settings are the durable path.

@@ -64,3 +64,15 @@ id_rsa*
 # Append your language-specific ignores (node_modules/, __pycache__/, target/,
 # build/, dist/, etc.) here, or use `gh repo create --gitignore <lang>` to
 # generate one.
+
+# Node / Vite
+node_modules/
+dist/
+dist-ssr/
+*.log
+*.local
+*.tsbuildinfo
+
+# Playwright
+test-results/
+playwright-report/

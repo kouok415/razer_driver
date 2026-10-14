@@ -1,0 +1,23 @@
+:root {
+  color-scheme: light dark;
+  font: 16px/1.5 system-ui, -apple-system, 'PingFang TC', 'Noto Sans TC', sans-serif;
+  background: #fff;
+  color: #1a1a1a;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    background: #111;
+    color: #e6e6e6;
+  }
+}
+
+body {
+  margin: 0;
+}
+
+main {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}

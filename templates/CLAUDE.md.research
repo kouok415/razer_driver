@@ -1,0 +1,59 @@
+# {{PROJECT_NAME}} — research project
+
+<!-- claude-starter: UNCONFIGURED — the first session must run /setup;
+     drafting CLAUDE.md deletes this sentinel line (the setup gate keys on it). -->
+
+<!-- One paragraph: the research question, why it matters, what a good
+     answer enables. Replace before first commit. -->
+
+## Question & scope
+
+- **Primary question:**
+- **Sub-questions:**
+- **Out of scope:**
+- **Depth target:** <quick survey / thorough report / publication-grade>
+
+## Sources
+
+<!-- Registry of where evidence comes from. Grade reliability so future
+     sessions inherit your calibration. -->
+
+| Source | Type | Reliability | Notes |
+|---|---|---|---|
+| _(add as used)_ | | A/B/C | |
+
+## Method & conventions
+
+- Every claim in a deliverable carries a source; unconfirmed claims are
+  tagged `[TENTATIVE]` (H3).
+- Evidence grades: **A** primary/official, **B** reputable secondary,
+  **C** single-source/anecdotal. Two independent sources upgrade C → B.
+- Actively look for disconfirming evidence before concluding.
+- Session findings → `.ai_context/journal/YYYY-MM-DD-<topic>.md`;
+  distilled, stable knowledge → `.ai_context/knowledge/`.
+
+## Deliverables
+
+- **Format:** <report.md / artifact page / slide outline>
+- **Location:** <path>
+
+## Definition of done
+
+- Load-bearing claims sourced at grade B or better; counterevidence sought
+  and addressed; remaining uncertainty stated explicitly.
+- Findings distilled into `knowledge/`, not left buried in journal entries.
+- `.ai_context/state.md` reflects where the investigation stands and the
+  next 1–3 steps.
+
+## Memory & mechanisms
+
+- `.ai_context/` is the project's persistent memory; `INDEX.md` is the
+  authority for what lives where.
+- Run `/wrap` at session end — research memory rots faster than code.
+
+## Long-horizon tasks
+
+- Research sprints expected to exceed ~30 minutes of autonomous work go
+  through `/task <description>` — milestones gate on **artifact checks**
+  (`test -s reports/x.md`, section counts, source counts), not test suites.
+- Work happens on a `task/<slug>` branch; every passed gate is a commit.

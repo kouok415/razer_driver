@@ -1,0 +1,66 @@
+# {{PROJECT_NAME}}
+
+<!-- claude-starter: UNCONFIGURED — the first session must run /setup;
+     drafting CLAUDE.md deletes this sentinel line (the setup gate keys on it). -->
+
+<!-- One paragraph: what this project is, who it's for, what success looks
+     like. Replace before first commit. -->
+
+## Stack & layout
+
+<!-- Fill after running your language's init (npm create / uv init / cargo
+     init / flutter create ...). Tip: `/init` can draft this from the code. -->
+
+- **Language:** <e.g., TypeScript, Python 3.12, Rust>
+- **Framework:** <e.g., Next.js 15, FastAPI, Axum>
+- **Source layout:** <e.g., `src/` for code, `tests/` for tests>
+- **Package manager:** <bun / pnpm / uv / cargo>
+
+## Commands
+
+- **Install:** `<command>`
+- **Dev:** `<command>`
+- **Test:** `<command>`
+- **Lint:** `<command>`
+- **Build:** `<command>`
+- **Verify:** `<command that exercises the change end-to-end and shows it
+  working — a smoke run, a sample request, one real invocation. Not just
+  the test suite.>`
+
+## Definition of done
+
+A change is complete only when all of these hold (edit to fit the project):
+
+- Tests pass locally — run them and state the result.
+- Lint/format clean.
+- The **Verify** command was run and the observed behavior matches intent.
+- `.ai_context/state.md` updated if project state changed; ADR appended to
+  `.ai_context/decisions.md` if a design decision was made.
+
+"Should work" is not done. Unverified work is reported as unverified.
+
+## Project rules
+
+<!-- Only deviations from global defaults. Keep short. -->
+
+- _(none yet)_
+
+## Memory & mechanisms
+
+- `.ai_context/` is this project's persistent memory; `INDEX.md` is the
+  authority for what lives where and when to read it.
+- Run `/wrap` at the end of a session to write memory back.
+- For instant lint feedback on every edit, copy
+  `.claude/hooks/lint.sh.example` → `lint.sh` once the stack exists.
+
+## Long-horizon tasks
+
+- Any task expected to exceed ~30 minutes of autonomous work goes through
+  `/task <description>` — the skill carries the full protocol.
+- Task work happens on a `task/<slug>` branch; every passed gate is a commit.
+- Profile is auto-detected and frozen per task. To pin it for this project,
+  uncomment one:
+  <!-- Task profile: opus-tier -->
+  <!-- Task profile: fable-tier -->
+  <!-- Task profile: mixed  (apply with: bash scripts/task-profile.sh mixed) -->
+  <!-- Task profile: mixed-judge  (apply with: bash scripts/task-profile.sh mixed-judge) -->

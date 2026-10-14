@@ -1,0 +1,56 @@
+# {{PROJECT_NAME}} — data analysis project
+
+<!-- claude-starter: UNCONFIGURED — the first session must run /setup;
+     drafting CLAUDE.md deletes this sentinel line (the setup gate keys on it). -->
+
+<!-- One paragraph: what's being analyzed, for what decision, what a useful
+     output looks like. Replace before first commit. -->
+
+## Data
+
+- **Sources:** <APIs, files, DBs — and how each is accessed>
+- **Period / universe:** <date range, symbols, cohorts>
+- **Storage:** <where raw & processed data live; large files stay out of git>
+- Consider wiring data sources as MCP servers (see `.mcp.json.example`) so
+  Claude can query them directly instead of round-tripping through you.
+
+## Pipeline commands
+
+- **Fetch / update data:** `<command>`
+- **Run analysis / backtest:** `<command>`
+- **Generate report:** `<command>`
+- **Verify:** `<smallest end-to-end slice that proves the pipeline works —
+  e.g., one day, one symbol, one cohort>`
+
+## Metric definitions
+
+Definitions live in `.ai_context/knowledge/metrics.md` (create on first
+metric). A number without a pinned definition is not a result.
+
+## Definition of done
+
+- Numbers are **reproducible**: fixed data window, pinned parameters/seed,
+  and the exact command recorded next to the result.
+- No lookahead / survivorship bias in the data path — state how you checked.
+- Limitations and data-quality caveats stated alongside the findings.
+- Findings dated into `.ai_context/journal/`; stable conclusions promoted
+  to `knowledge/`.
+
+## Project rules
+
+<!-- Only deviations from global defaults. Keep short. -->
+
+- _(none yet)_
+
+## Memory & mechanisms
+
+- `.ai_context/` is the project's persistent memory; `INDEX.md` is the
+  authority for what lives where.
+- Run `/wrap` at session end.
+
+## Long-horizon tasks
+
+- Multi-stage pipeline work (> ~30 min autonomous) goes through
+  `/task <description>` — milestone verify commands are pipeline slices
+  (one day / one symbol / one cohort) or output-schema checks.
+- Work happens on a `task/<slug>` branch; every passed gate is a commit.

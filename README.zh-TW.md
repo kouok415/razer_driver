@@ -1,0 +1,339 @@
+# claude-starter
+
+[English](./README.md) · **繁體中文**
+
+> 語言無關的 Claude Code 專案腳手架:結構化的持久記憶,
+> 加上讓規則真正成立的機制層。
+
+跨多個 session 與 Claude 協作時,會出三種問題:
+
+1. **Claude 在 session 之間會忘記。** 週二做的決策到週四就消失,你重新解釋、
+   Claude 重新摸索,時間白白流失。
+2. **常見的解法是一份 `CLAUDE.md` 加一個筆記資料夾,隨手拼裝。** 每個專案
+   長得都不一樣、規則各自漂移、敏感資料混進 commit。
+3. **散文規則不會自我執行。**「先讀 state.md」「不准寫密鑰」「不超過 5 KB」
+   —— 寫在 markdown 裡,只有模型剛好記得時才成立。
+
+`claude-starter` 一次設計、處處重用地解決這三件事:三層記憶,外加第四層
+**機制** —— hooks、權限規則、pre-commit 檢查 —— 讓協議在長 session、
+context 壓縮、人類健忘之下依然成立。第五層把大任務變成有閘門的里程碑
+管線:`/task` 負責規劃、執行、驗證那些單一 context 撐不完的長程工作。
+
+---
+
+## 架構
+
+```
+┌──────────────────────────────────────────────────────────┐
+│ 第 1 層 — 全域        ~/.claude/CLAUDE.md                │
+│   行為與偏好。每個專案、每個 session 都載入。            │
+│   正本:本 repo 的 global/CLAUDE.md。                    │
+└──────────────────────────────────────────────────────────┘
+                            ▼
+┌──────────────────────────────────────────────────────────┐
+│ 第 2 層 — 專案        <project>/CLAUDE.md                │
+│   技術棧、指令、Verify、Definition of done。             │
+│   「只在這裡成立」的事實。                               │
+└──────────────────────────────────────────────────────────┘
+                            ▼
+┌──────────────────────────────────────────────────────────┐
+│ 第 3 層 — 記憶        <project>/.ai_context/             │
+│   ├── INDEX.md      註冊表:什麼東西在哪                 │
+│   ├── state.md      現在(可覆寫,≤5 KB)                │
+│   ├── decisions.md  永久(append-only ADR 日誌)         │
+│   ├── knowledge/    長期參考                             │
+│   ├── journal/      逐事件記錄(含日期)                 │
+│   └── private/      敏感草稿(gitignore)                │
+└──────────────────────────────────────────────────────────┘
+                            ▼
+┌──────────────────────────────────────────────────────────┐
+│ 第 4 層 — 機制        <project>/.claude/ + pre-commit    │
+│   用 hooks、skills、權限規則去「強制」上面三層,         │
+│   而不是指望它們被遵守。                                 │
+└──────────────────────────────────────────────────────────┘
+                            ▼
+┌──────────────────────────────────────────────────────────┐
+│ 第 5 層 — 執行        /task + stop gate + agents         │
+│   長程 harness:里程碑計畫、全新 context 的執行者、      │
+│   對抗式驗收、強制閘門。                                 │
+└──────────────────────────────────────────────────────────┘
+```
+
+每一層回答一個問題:
+
+- **全域:** Claude 應該*怎麼做事*?
+- **專案:** *這個專案*是什麼?這裡的「完成」是什麼意思?
+- **記憶:** *已經發生過什麼*?*現在什麼為真*?
+- **機制:** 沒有人盯著的時候,什麼依然成立?
+- **執行:** 一個 context 裝不下的任務,怎麼做完 —— 而且*證明*做完?
+
+## 散文 → 機制
+
+v2 的核心原則:重要的規則都配一個機制。散文是規格,機制才是保證。
+
+| 規則(散文) | 機制(強制) |
+|---|---|
+| 「每個 session 先讀 INDEX.md 再讀 state.md」 | `SessionStart` hook 自動注入兩者 —— 啟動、resume、`/clear`、壓縮後皆然 |
+| 「停下來之前把記憶寫回去」 | `/wrap` skill 執行寫回儀式 |
+| 「commit 裡不准有密鑰」(H1) | gitleaks pre-commit + `settings.json` 禁止讀取 `.env*` 與 `.secrets/**` |
+| 「密鑰只給 runtime:程式可讀,Claude 和 git 不可」 | `.secrets/` 資料夾 —— Read 工具被 deny(`settings.json`)、Bash 觸及降級為確認提示(`bash-guard.sh`)、git 只看得見佔位檔;執行期讀取(`GOOGLE_APPLICATION_CREDENTIALS=.secrets/sa.json ...`)完全不受影響。Read 工具是硬擋,其餘是絆索 —— 能讀到密鑰的代碼永遠可能洩漏它,所以代碼不要把密鑰印到 stdout |
+| 「state.md 不超過 5 KB」(S7) | pre-commit 大小檢查 + session 開始時警告 |
+| 「會老化的事實要標日期」(S3) | session-start hook 偵測 state.md 過期並警告 |
+| 「驗證過才算完成」 | **Stop gate**:`/task` 進行中時,當前里程碑的 verify 指令不通過,回合就結束不了(樹沒變動則命中 PASS-cache,不重跑);外加 CLAUDE.md 的 **Verify** + **Definition of done** 契約、可選的 `lint.sh` 即時回饋。閘門只在 `/task` 進行中武裝 —— 大到需要閘門的工作,本身就該是一個 `/task`。連續兩次紅燈會擋;第三次交棒給人類(見下一列) |
+| 「紅燈閘門必須抵達人類,不能死在 transcript 裡」 | 計數式讓行(v3.9):同一(session, 里程碑)連續第三次紅燈停止時 exit 0,寫入一行 `STUCK` gatelog 並發出 UI 可見的 `{"systemMessage"}` —— 三次失敗就是三振規則,交棒是可見的,不是無聲放行。`PASS` 重置計數;`/wrap --sweep` 永不讓行;模型可修的擋下狀態(狀態錯字、被禁 verify)照樣每次都擋。每個(session, 里程碑)只寫一行 `STUCK` —— 之後的停止重複 `systemMessage` 但不再寫列,記分板把一次交棒算成一次(v3.10) |
+| 「擋下必須在宿主 CLI 手上活下來;綠燈邊界是明確決定,不是無聲停車」(v3.14) | 每條 exit-2 路徑先印一行固定 stdout marker(CLI 的 missing-hook heuristic 否則會把紅燈擋下誤判成「hook 不存在」而放行);武裝中的里程碑有新鮮 executor spawn 列時,verify 延後一次(`WAITING` 列,完成通知就是喚醒保證);里程碑 PASS 但還有 `[pending]` 時,每 (session, 里程碑) 一次續跑提示 —— 繼續,或明說暫停(未回答的人類問題必須重述、不得跨過),下一次停止放行並寫 `PAUSED` 列;`- checkpoint: human` 里程碑則機械等待人類 `touch tasks/<slug>/ack-<id>` 簽核,包含沒有後續里程碑的最後一關；全 done 收尾也檢查簽核。Stop 可以顯示等待訊息後暫停，但 `--sweep` 每次都拒絕缺少簽核的收尾 |
+| 「`[in_progress]` 必須能證明 executor 真的啟動過」 | `spawn-log.sh` 在 `SubagentStart` 事件把 hook 寫入的列追加到 `tasks/<slug>/spawnlog`(Edit/Write 被 deny;matcher 區分 `executor` 與 scout/planner/…,不解析 payload);M/L 任務紅燈且 spawnlog 有 intake 列卻沒有該里程碑的 executor 列時,閘門把指引改為第 1 階「先 spawn executor」而非升級梯 —— 「從未開始」和「試過但失敗」在壓縮後不再無法區分(v3.9) |
+| 「重新錨定只付當前里程碑的成本,不付整份計畫」 | session-start 注入過濾後的 plan.md 視圖 —— 頭部 + 所有標題 + verify/risk 行 + 完整的 `[in_progress]` 段;視圖自我聲明為過濾版,超過 8 KB 警告。前向約束(SKILL 規則)寫進*目標*里程碑的註解塊,武裝那一刻才浮現,不必每個 session 租用 context(v3.9)。executor 直接從 spawn prompt 拿到武裝里程碑的完整段落、永不重讀原始 plan.md;原始檔超過 16 KB 警告;全 `[done]` 但 `CURRENT` 未清的任務會被提示跑 `/wrap`,不再無聲續付任務附件(v3.11) |
+| 「長任務會衰變:漂移、無聲錯誤、狀態流失」 | `/task` harness —— 帶可執行閘門的里程碑計畫、每個里程碑全新 executor context、對抗式 verifier、升級梯、過關即 commit |
+| 「人類隨時看得到進度在哪、在建什麼」(v3.12) | `tasks/<slug>/STATUS.md` 即時視圖:機械區(位置、mermaid 里程碑圖、demo 承諾、變更足跡、最後一次 verify 輸出、`[ASSUMED]` 帳本)由 `scripts/task-status.sh` 重生成 —— stop-gate 在每次真實 verify 後、session-start 在每次 resume 時重繪 —— 模型只擁有 §Architecture(還是 stub 時每 session 一次 `systemMessage` 提醒)。比照 `.gate-cache` 列入 gitignore,重繪永不打掉 PASS-cache。可選 statusline 一行位置指示:`scripts/task-statusline.sh` |
+| 「里程碑是 demo 與可否決的決定,不是一顆裸驗證燈」(v3.12) | plan 格式每個里程碑帶 `- demo:` 行(把 verify 翻譯成「跑 X,你會看到 Y」);M1 前的開工簡報陳述會存在什麼、每條 demo 承諾、否決契約(一里程碑=一 commit=merge 前廉價回滾);executor 回報真實輸出的 demo + `[ASSUMED: ...]` 詮釋(≤3 條)落入 spec §Assumptions —— 全程 append-only 的決策帳本;PASS 回報 demo 先行;verifier 的 drift mode(現在 M 任務中點也跑)審意圖 —— Goal、Constraints、Out of scope —— 並點名人類可能否決的帳本條目 |
+| 「新專案的第一個 session 要完成設置」 | session-start 的 `SETUP REQUIRED` 指令 + Stop gate 擋住第一次回合結束(每 session 一次);兩者都認 CLAUDE.md 裡的 `claude-starter: UNCONFIGURED` sentinel,`/setup` 起草完成時刪掉它 |
+| 「發現(discovery)只付一次,不是每個子代理付一次」 | `scout` agent 在 intake 寫出 `tasks/<slug>/brief.md`;session-start 自動注入;之後所有 context 按圖導航、發現地圖錯就附註修正,不再重新調查 |
+| 「儀式隨任務規模縮放、驗證隨風險縮放」 | `/task` 把規模(S/M/L)記進 plan 頭部 —— S 直接在主 context 規劃執行;每個里程碑的 `risk:` 決定 只靠閘門 / 輕量 diff 審查 / 完整對抗驗證 |
+| 「一個狀態錯字不能無聲解除閘門」 | session-start 偵測「任務有 `[pending]` 里程碑卻沒有 `[in_progress]`」時警告;Stop gate 對做到一半斷鏈(`[done]`+`[pending]` 卻無 in_progress)的狀態每 session 擋一次 |
+| 「里程碑閘門絕不無聲熄滅」 | 其餘暗閘狀態 —— CURRENT 空白/損毀、plan.md 不存在或無里程碑標題、`[in_progress]` 里程碑缺 verify 指令、任務工作不在 `task/*` 分支上(main/master 或其他分支:verify 會對著錯的樹跑)—— 每 session 打斷一次,且**每次**偵測都在 gatelog 追加一行 `INTEGRITY`(v3.10 起 log-always:同 session 的第二個暗閘狀態一樣進稽核軌跡):安靜的 gatelog 可證明等於乾淨的一輪 |
+| 「單一 turn 跑完的任務不能留下空白稽核軌跡」 | 零停頓掃描:在全 `[done]` 狀態(以及 `/wrap` 刪除 `CURRENT` 前呼叫的 `stop-gate.sh --sweep`)——明確執行 `--sweep` 時一定重跑目前最後一個里程碑的 verify，即使已有舊 PASS；一般全 done 的 Stop 僅在里程碑、命令和檔案指紋都相同時使用快取。更早的無列閘門補記 `UNARMED`，不重跑已過去的時間點驗收 |
+| 「verify 指令要被稽核,不只是被執行」 | gatelog 每行記錄實際強制執行的指令(中途弱化留下痕跡);final panel 以 `git log -p -- spec.md` 稽核驗收準則是否被悄悄改弱 |
+| 「verify 指令不能無人看管地做災難性操作」 | Stop gate denylist:含 `sudo`、`git push`、絕對路徑遞迴強制刪除的 verify 永不執行 —— 一律擋下、一律記錄。matcher 對拼寫寬容(`-fr`、拆開的旗標、多空格一視同仁拒絕),且單一來源住在 `guard-patterns.sh`、與 `bash-guard.sh` 共用,兩層永不漂移(v3.10) |
+| 「災難性 bash 絕不無人看管地執行」(永不 force-push、不 sudo) | `bash-guard.sh` PreToolUse 絆索:任何拼寫的 force-push(旗標或 `+refspec`)/ `sudo` / 根目錄刪除(含 `--no-preserve-root`,v3.10)一律拒絕並記錄到 `private/bash-guard.log`;跳出專案樹的 `rm -rf`(絕對路徑、`~/`、`$HOME/`、`..` —— v3.14.3)與 `.env` 存取降級為確認提示 —— session 自己的 `/tmp/claude-*/…/scratchpad` 樹除外(v3.14.1:harness 本來就會丟掉它,每次清理都問只會訓練出無腦點過)。hook 是唯一的 `rm` 層:v3.14.2 把 `settings.json` 的 `Bash(rm -rf:*)` ask 規則拿掉了 —— CLI 對宣告式 `ask` 規則在所有模式(含 bypass)都會問、逐子指令比對、不管 hook 說什麼,所以那條規則在 hook 之外每次清理 scratchpad 都跳確認,任何 hook 端的豁免都碰不到它(CLI 內建的關鍵路徑保護仍會在所有模式下對根目錄 / 頂層目錄 / home / cwd 的刪除發問)。宣告式 `ask`(push、reset --hard、clean、sudo)與 `deny` 規則留在 `settings.json`,給的是連 bypass 下都該問的事 —— v3.14.3 再加三條給 `rm -rf ~/*`、`$HOME/*`、`../*`:bypass 會丟掉 hook 的 ask,而這三種寫法永遠碰不到 `/tmp` 的 scratchpad,所以能在 bypass 下發問又不會連環確認;hook 端也鏡射它們(任何旗標拼寫),給其他模式與 stop-gate 黑名單用。v3.14.4:ask 層改讀剝掉 heredoc 內文的指令 —— 寫進記憶檔的文字不是指令(fleet 的 48 次 subagent `.env` 卡關有 17 次就是這樣,每次中位數等 10 分鐘),而且專案自己的樹對 `rm -rf` 比照 scratchpad 豁免;deny 層仍讀全文。v3.14.5:`/tmp/<名字>/…` 也放行 —— 開發機上 `/tmp` 本來就是可拋棄的,fleet 的 subagent 刪過的 `/tmp/<名字>` 全是自己建的 —— 但 `/tmp`、`/tmp/`、`/tmp/*` 照問(整棵 `/tmp/claude-<uid>` 會放行:已知邊界)。contains 匹配強過前綴規則 —— 但它是絆索,不是沙箱 |
+| 「`--local` 生成永不帶走本機狀態」 | 複製改用 `git archive HEAD` —— 只帶被追蹤的內容:gitignore 的憑證(`.secrets/`)、本機設定、未追蹤的草稿全部留在原地;未提交的模板修改也不會跟著走(先 commit)。非 git 來源退回 `cp -R` + 清除已知洩漏點(v3.10) |
+| 「失敗與放棄的任務也要進資料集」 | `/wrap` 在放棄時同樣寫入記分板列(`outcome` 釘死為 `success\|failed\|abandoned`),外加取自 git 時間戳的 `duration_min` —— 不留倖存者偏差 |
+| 「每筆記分板列都標明產生它的 harness 版本」 | `/wrap` 從 `.claude/.starter-version` 最後一行的 `claude-starter@<ref>` 戳記填入 `harness` 欄;release 都打 git tag,ref→版本的對映是機械的。戳記說真話(v3.10):**任何**改動了機制的 sync 都追加 `synced-to:` 戳記(不再只限 `--update-stock`);GitHub 模式生成蓋的是實際 clone 到的 template head,不是可能過期的 spawner checkout |
+| 「harness 的摩擦是資料,不是體感」 | `/wrap` 只在機制真的出問題時把枚舉列(`area` × `severity`)寫進 `.ai_context/friction.csv`;`harness-report.sh` 把它跟 gatelog 的 `INTEGRITY` 列 join 起來 |
+| 「評分是算出來的,不是回憶出來的」 | `scripts/harness-report.sh`(CI 有測)按 harness 版本計算 outcome/gate/escalation/成本聚合;N<5 不印百分比;刻意不存在綜合分數 |
+| 「評分資料要交叉核對,不是照單全收」 | `harness-report.sh` 的 `== integrity` 節:記分板↔gatelog 的 `gate_failures` 不一致、孤兒任務目錄(從未進記分板的 run)、缺 PASS/UNARMED 證據、枚舉違規 —— 一律列出,永不自動修復 |
+| 「常駐注入的檔案必須保持小」 | `brief.md`/`lessons.md` 超過 4 KB 警告、`state.md` 5 KB pre-commit 上限 + 警告(S7)、`INDEX.md` 自身有大小守衛測試 + 專案內超過 4 KB 時 session-start 警告 |
+| 「大塊資料外部化」(S2) | `check-context-bulk.sh` pre-commit:任何 staged 的 `.ai_context` 檔案超過 100 KB 即擋下 —— dump 用引用,不用貼上 |
+| 「記分板數字必須是真的」 | Stop gate 每次真實執行寫入 `gatelog`;`/wrap` 彙總成 `scoreboard.csv` |
+| 「append-only 檔案永不改寫」(decisions、journal、scoreboard、friction、gatelog) | `check-append-only.sh` pre-commit:staged 變更若修改或刪除既有行即拒絕;更正靠追加。`lessons.md`/`brief.md` 保持可改寫 —— `/wrap` 蒸餾它們是設計行為 |
+| 「gatelog 與 spawnlog 只由 hook 寫入」 | `settings.json` 對 `tasks/*/gatelog` 與 `tasks/*/spawnlog` 禁用 `Edit(...)` —— Edit 規則涵蓋所有檔案編輯工具(含 Write;獨立的 `Write(...)` 規則是 Claude Code 會警告的死規則,v3.11 移除);append-only pre-commit 做後盾(raw Bash 追加仍可能 —— 絆索,不是沙箱) |
+| 「沒跑 /wrap 就死掉的 session」 | session-start 偵測 commit 比 `state.md` 新時發出警告 |
+
+---
+
+## 快速開始
+
+> 實戰教程(生成 → 日常迴圈 → `/task` → profile):
+> **[TUTORIAL.zh-TW.md](./TUTORIAL.zh-TW.md)** · [English](./TUTORIAL.md)
+
+### 1. 設定全域層(每台機器一次)
+
+```bash
+git clone https://github.com/<your-username>/claude-starter.git
+cd claude-starter
+./bootstrap-machine.sh
+```
+
+repo 是自足的:`global/CLAUDE.md` 就在裡面。之後重跑會顯示 diff、
+確認後才更新 `~/.claude/CLAUDE.md`(保留日期備份);`--force-global`
+可跳過詢問。可選項:bun + uv 工具鏈、pre-commit + gitleaks、PUA plugin。
+
+### 2. 把這個 repo 標記為 GitHub template
+
+推上 GitHub 後,到 Settings → 勾選 "Template repository",
+`gh repo create --template` 才能運作。
+
+### 3. 生成新專案
+
+```bash
+./start_project.sh my-app                      # code 型,private
+./start_project.sh --kind research my-survey   # 研究型
+./start_project.sh --kind analysis my-backtest # 資料分析型
+./start_project.sh --local --kind code demo    # 離線,不碰 GitHub
+```
+
+生成器會依 kind 個人化 CLAUDE.md、產生真正的專案 README、填入日期、
+**移除腳手架自身的基建檔案**(新專案不會帶著 `start_project.sh`、
+本說明文等),有 pre-commit 就順手安裝,最後 commit + push。
+
+### 4. 開始工作
+
+在專案裡打開 Claude。SessionStart hook 會自動注入 `INDEX.md` +
+`state.md`。工作。停下來時跑 `/wrap` —— 它把 state、決策、journal
+寫回去。大任務用 `/task <描述>` 開跑 —— 見下方**長程任務**一節。
+
+### 5. 升級先前生成的專案
+
+```bash
+./sync-project.sh ../my-older-project
+```
+
+只補上缺少的機制檔案(絕不覆寫),其餘以建議清單印出。
+詳見 [MIGRATION.md](./MIGRATION.md)。
+
+---
+
+## 長程任務 —— `/task`
+
+記憶層讓 *session 之間*連續;`/task` 讓*單一大任務*活著跑完。它把
+「一個英雄式的長 context」換成有閘門的管線:
+
+1. **Spec** —— 驗收標準必須是可執行的檢查,否則不開跑。
+2. **Scout** —— 一次調查寫出 `brief.md`:之後每個 context 都按這張圖
+   導航。context 為了判斷獨立性保持全新;事實用繼承的,不重新推導。
+3. **計畫** —— 儀式隨記錄的規模縮放:**S** 直接起草(零 spawn)、
+   **M** = 1 個 `planner` + 紅隊 `plan-critic`、**L** = 3 個視角
+   planner + critic。小里程碑,每個帶 `verify:` 指令和 `risk:` 等級。
+4. **里程碑迴圈** —— S 在主 context 執行;M/L 每個里程碑用全新
+   `executor`。驗證深度看風險:`low` 只靠機械閘門、`med` 輕量 diff
+   審查、`high` 完整對抗式 `verifier`。過關即 commit。
+5. **Stop gate** —— 回合想結束時 `stop-gate.sh` 重跑當前里程碑的
+   verify;紅燈就結束不了(樹沒變動則命中 PASS-cache,不重跑)。
+   Definition of done 從散文變成物理法則。
+6. **升級梯** —— 換方法重試 → 3 個分歧策略平行(worktree)→
+   `reframer` 改寫問題本身 → 停下回報(三振規則)。
+
+狀態放在 `.ai_context/tasks/<slug>/`(`spec.md`、`plan.md`、`brief.md`、
+`lessons.md`),`/clear` 和壓縮後會自動重新注入,run 不怕 context
+流失。完結時 `/wrap` 追加記分板一列(profile、size、閘門失敗數、
+用到第幾級升級梯)—— 用數據判斷這套 harness 值不值得。
+
+**Profile。** 協定按模型分級:可靠性核心(閘門、狀態、驗證)永遠全開;
+里程碑粒度、planner 扇出、升級梯路徑隨 tier 縮放 —— intake 時偵測、
+凍結進該任務的 `plan.md`,可用專案 CLAUDE.md 的 `Task profile:` 覆寫。
+`mixed`(強模型指揮、便宜模型執行)一個指令:`bash
+scripts/task-profile.sh mixed`。v3.13 新增 `mixed-judge`:判斷層
+agent(scout、planner、plan-critic、reframer、final-verifier)釘到
+最強 tier、executor + verifier 用便宜 tier —— 逐任務以
+`/task --profile=mixed-judge` 選用;收尾檢查獨立成 `final-verifier`
+agent,可與里程碑驗收用不同 tier。任務中途換模型永不
+靜默生效：`task-profile.sh` 的 `apply`、`mixed`、`mixed-judge`、
+`inherit` 都會在選擇與 active plan 不同時警告。仍套用使用者選擇，
+但不自動改寫 plan；剩餘里程碑與 header 依既有切換流程調整。
+
+**Pair 模式（Unreleased）。** `/task --profile=pair-codex` 加入唯一的非
+Claude 席位：一個在 [herdr](https://herdr.dev) 相鄰 pane 裡、用使用者當前
+Codex 預設模型跑的 Codex judge。角色固定 —— Claude 執行、Codex 檢查 ——
+因為「不同模型」比「fresh context」多買到的只有判斷獨立性。檔案是契約
+（`tasks/<slug>/pair/` packet 進、result 出），herdr 只負責啟動、送 prompt、
+等待。`scripts/task-pair.sh` 是筆：非 pair profile 拒絕執行；啟動 judge 時關掉
+Codex hooks（Codex hooks 與 Claude 相容，複製過去的 Stop hook 會在 judge
+裡跑第二道閘門）；每次 run 前後比對 tree 指紋（judge 改了任何東西就作廢
+自己的結果）；掃描 herdr 判成 `idle` 的 Codex 對話框；自己永不輸出
+verdict —— 它只決定 `run_state`。`task-pair.sh packet` 產生 judge 讀的每一份
+packet（milestone 段落、驗收條件、lens 框架、result 契約），檢查者的輸入
+不靠記憶。已接線（`pair.md` §Stage wiring）：`risk: med` 由 judge 取代 Claude
+verifier、`risk: high` 兩邊都要過、drift check 交給 judge、final panel 兩邊各跑
+三個 lens —— 聯集、一輪對抗、逐條裁決記在 `pair/ledger.md`。plan 變成收斂
+迴圈：round 0 加一個 Codex planner 候選，round 1 由 Claude critic 和 Codex
+critic 攻擊同一個凍結 digest，round 2 起只剩 Codex critic，它在某個凍結
+digest 上過了 plan 才前進 —— 最多十輪，之後帳本上的未解項交給人。每個
+packet 都在 judge 的新 thread 跑（`send` 先送 `/new`），檢查者不會把自己前幾
+輪的判斷帶進 verdict。intake 時 Codex spec critique 先攻擊驗收條件的可執行性、把「什麼
+情況下你會 reject」問具體，brief audit 在 planner 讀之前用命令核對 scout 的
+關鍵主張。協定裡每個檢查席位現在都有跨模型的坐者；生產席位（scout、
+executor、reframer）仍是 Claude 的。
+
+---
+
+## 盒子裡有什麼
+
+```
+claude-starter/
+├── global/CLAUDE.md            第 1 層正本(bootstrap 安裝)
+├── templates/
+│   ├── CLAUDE.md.code          專案簡介:技術棧、指令、Verify、DoD
+│   ├── CLAUDE.md.research      研究框架:來源登記、證據分級
+│   ├── CLAUDE.md.analysis      資料框架:pipeline、可重現性
+│   └── README.project.md       新專案的真 README 樣板
+├── .claude/
+│   ├── settings.json           hooks 接線 + 權限規則(入 git)
+│   ├── hooks/
+│   │   ├── session-start.sh    注入 INDEX+state(+ 進行中任務的 plan)
+│   │   ├── post-edit.sh        編輯後即時 lint 回饋(委派 lint.sh)
+│   │   ├── bash-guard.sh       PreToolUse 絆索(force-push/sudo/rm -rf /)
+│   │   ├── guard-patterns.sh   共用災難操作 matcher + setup sentinel
+│   │   ├── spawn-log.sh        SubagentStart 證據列 → tasks/*/spawnlog
+│   │   ├── stop-gate.sh        /task 里程碑閘門 —— verify 紅燈不准停
+│   │   └── lint.sh.example     語言 init 之後填入你的 linter
+│   ├── agents/                 /task 班底:scout、planner、plan-critic、
+│   │                           executor、verifier、reframer
+│   └── skills/
+│       ├── wrap/SKILL.md       /wrap —— session 收尾記憶寫回
+│       ├── task/SKILL.md       /task —— 長程里程碑 harness
+│       ├── task/reference.md   worktree 協定 + profile 旋鈕(按需載入)
+│       └── setup/SKILL.md      /setup —— 第一次 session 的出生協定
+├── .ai_context/                第 3 層(schema v3)
+├── .secrets/                   Runtime-only 憑證(Read 拒讀 · git 不追蹤)
+├── .pre-commit-config.yaml     H1 密鑰掃描 + S7 大小上限
+├── scripts/                    pre-commit 輔助腳本(專案保留)
+├── tests/run.sh                L1+L2 回歸套件(CI 內建執行)
+├── .mcp.json.example           MCP 樣板(--kind analysis 保留)
+├── .github/workflows/lint.yml  模板 repo 自身的 CI(生成時移除)
+├── start_project.sh            生成器(驗證、個人化、清理)
+├── bootstrap-machine.sh        機器設定 + 全域層升級
+├── sync-project.sh             升級既有專案(只增不改,安全)
+├── MIGRATION.md                v2 → v3、v1 → v2,以及更舊佈局的遷移
+└── TUTORIAL.md / .zh-TW.md     實戰教程(生成專案時移除)
+```
+
+---
+
+## 設計原則
+
+### 硬規則(在每個專案的 `INDEX.md`)
+
+- **H1 — 不寫密鑰。** 機制:gitleaks + 禁讀 `.env*` 與 `.secrets/`
+  (runtime-only 資料夾:程式讀得到,Claude 和 git 讀不到)。
+- **H2 — 不重複事實。** README 或原始碼裡有的,引用,不複製。
+- **H3 — 推測不當事實。** 未確認的主張標 `[TENTATIVE]`。
+- **H4 — 對的檔案放對的東西。** 現在 → `state.md`;永久 →
+  `decisions.md`;這次事件 → `journal/`。
+- **L1 — 不寫真名。** 用角色代稱。真名最多放 `private/`。
+
+### 軟規則(在 `global/CLAUDE.md` → `~/.claude/CLAUDE.md`)
+
+S1 持久化門檻 · S2 大宗內容外部化 · S3 會老化的事實標日期 ·
+S4 不寫廢話 · S5 不寫情緒 · S6 不複製 PR/commit 描述 ·
+S7 `state.md` ≤ 5 KB。*(S5–S7 在 v1 編號為 L2–L4。)*
+
+### 我們刻意不做的事
+
+- **不做角色人設(PM / Backend / QA)。** 內建的 agent 是 `/task`
+  迴圈的*功能性階段*(規劃、批判、執行、驗收、重述)—— 不跑 `/task`
+  就完全惰性。組織圖式的人設依然不做;需要更多任務型 agent 在專案
+  層自行加。
+- **不在 CLAUDE.md 裡做指令路由。** slash 指令屬於 skill 系統
+  (`/wrap` 就是一個)。
+- **不做施壓式 prompt。** 驗證迴路勝過精神喊話;DoD 契約和 hooks
+  承擔這個職責。
+- **不內建語言工具鏈。** `bootstrap-machine.sh` 把 bun/uv 列為可選;
+  腳手架本身適用於程式、研究、分析、寫作。
+- **不 `mkdir src/`。** 原始碼佈局是語言腳手架工具的事。
+
+---
+
+## FAQ
+
+**Q:為什麼 `.ai_context/` 要進 git?**
+
+跨機器、跨協作者、跨月份的連續性。用 `chore(context): ...` 提交,
+可被 release-notes 過濾器排除。
+
+**Q:`.claudeignore` 去哪了?**
+
+v2 移除了 —— Claude Code 並不讀這個檔案,它只是裝飾。真正的機制是
+`.claude/settings.json` 的權限規則(已內建),加上 Claude 本身就會
+跳過 build 產物。
+
+**Q:`.ai_context/` 和 Claude 原生記憶差在哪?**
+
+`.ai_context/` 入 repo、可共享:專案真相。原生記憶(`~/.claude/...`)
+屬於個人、跨專案:個人偏好。`global/CLAUDE.md` 明訂分工,避免雙寫。
+
+**Q:團隊可以用嗎?**
+
+可以 —— bootstrap 每人跑一次,模板共用。多人同時寫 ADR 時,把
+`decisions.md` 改成一檔一 ADR(`decisions/NNN-title.md`);
+`INDEX.md` 說明了時機。
+
+**Q:我有 v1 佈局(或更古老的 PM/BE/FE/QA 佈局)的專案。**
+
+v1 → v2 用 `./sync-project.sh <path>`;完整說明見
+[MIGRATION.md](./MIGRATION.md)。
+
+---
+
+## 授權
+
+MIT(或你偏好的授權 —— 公開前先決定)。

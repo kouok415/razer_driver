@@ -62,3 +62,26 @@ new entry that references and supersedes the old one.
   does in host software rather than firmware — animated Chroma effects,
   host-executed macros — only runs while the tab is open; onboard
   (firmware-stored) settings are the durable path.
+
+## ADR-002: MIT license, public repo, GitHub Pages hosting
+
+- **Date:** 2026-10-14
+- **Status:** Accepted
+- **Context:** Owner wants to open the configurator by URL rather than run
+  it locally. The repo was private; GitHub Pages on the owner's plan
+  requires a public repo (API returned 422 for the private one).
+- **Decision:** Owner chose MIT, making the repo public, and GitHub Pages
+  deployed by `.github/workflows/pages.yml` (verify → build → deploy on
+  push to `master`; verify only on PRs). Vite `base: './'` so one build
+  serves both localhost and the `/razer_driver/` project path. History was
+  rewritten to replace a personal email with the GitHub noreply address
+  before going public (owner-approved force-push).
+- **Rationale:** MIT matches the main MIT protocol source
+  (zexrox/huntsman-synapse-web). Public repo is the zero-cost way to get
+  Pages; the code is meant to be open anyway.
+- **Alternatives considered:** separate public repo holding only the build
+  (needs a deploy token secret); GitHub Pro (paid); non-GitHub hosts
+  (owner asked for GitHub).
+- **Consequences:** Everything committed, including `.ai_context/`, is
+  public — the H1/L1 rules and the gitleaks pre-commit hook carry real
+  weight. Any client-side routing must be hash-based or relative.

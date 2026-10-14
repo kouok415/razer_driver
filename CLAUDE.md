@@ -27,6 +27,9 @@ polling rate and the rest. UI is bilingual (繁體中文 + English).
 - **Test:** `npm test` (Vitest)
 - **Lint:** `npm run lint` (oxlint)
 - **Build:** `npm run build` (`tsc -b` + Vite)
+- **Deploy:** merge to `master` → `.github/workflows/pages.yml` runs
+  verify, then publishes `dist/` to https://kouok415.github.io/razer_driver/
+  (PRs run verify only). The repo is public: nothing private gets committed.
 - **Verify:** `npm run verify` — lint → unit tests → production build →
   Playwright E2E against the built app in headless Chromium. Once the
   simulated keyboard exists, E2E drives each feature through a fake

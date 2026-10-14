@@ -23,6 +23,11 @@ Not affiliated with or endorsed by Razer.*
 - Chrome、Edge、Opera 或 Brave（Firefox 和 Safari 不支援 WebHID）
 - Razer Huntsman V3 Pro Tenkeyless，USB ID `1532:02A7`
 
+## 使用
+
+用 Chrome 打開 **https://kouok415.github.io/razer_driver/**（push 到 `master` 時由
+GitHub Actions 自動部署）。
+
 ## 本機執行
 
 ```sh
@@ -40,3 +45,7 @@ npm run dev        # 開 http://localhost:5173
 
 本工具會直接寫入鍵盤設定，使用風險自負。協議資訊來自公開來源與逆向工程，
 並非 Razer 官方文件。
+
+## 授權
+
+[MIT](./LICENSE)

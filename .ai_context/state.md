@@ -30,12 +30,12 @@ yet. Target device: RZ03-0498, USB 1532:02A7 (confirmed by owner).
 - Owner wants Synapse feature parity where the RZ03-0498 firmware allows.
 - Stack fixed by owner: TypeScript + React + Vite; UI zh-Hant + en.
 - No hardware attached to the dev machine; owner verifies on macOS.
+- Hosted on GitHub Pages from `master` (ADR-002); repo is public, MIT.
+- Commit as the GitHub noreply address, never a personal email.
 
 ## Open questions
 
-- Project license (MIT assumed compatible with zexrox source; owner to
-  confirm).
-- Hosting: localhost only, or also GitHub Pages?
+- _(none)_
 
 ## Pending hardware checks
 

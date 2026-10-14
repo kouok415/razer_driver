@@ -2,7 +2,7 @@
 
 # Project State
 
-_Last updated: {{DATE}}_
+_Last updated: 2026-10-14_
 
 ## Now
 

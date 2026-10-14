@@ -1,4 +1,4 @@
-# {{PROJECT_NAME}}
+# razer_driver
 
 <!-- claude-starter: UNCONFIGURED — the first session must run /setup;
      drafting CLAUDE.md deletes this sentinel line (the setup gate keys on it). -->

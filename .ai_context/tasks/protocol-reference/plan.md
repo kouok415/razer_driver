@@ -1,0 +1,251 @@
+# Plan: Cited protocol reference for the Huntsman V3 Pro TKL (RZ03-0498)
+<!-- profile: opus-tier ; size: L -->
+<!-- statuses: [pending] [in_progress] [done]; exactly one in_progress -->
+<!-- Synthesis of 3 planner lenses (risk-first, vertical-slice, minimal-change) + plan-critic, 2026-10-14.
+Order: ALL source-dependent research (M1–M10) runs before the only human checkpoint (M11),
+because $S is session-scoped and a re-downloaded Synapse bundle gets a new sha.
+Rescoped 2026-10-14 (was webhid-foundation): owner's macOS dumps (.ai_context/knowledge/
+hid-02a7-macos.txt) show USB interface 3 has no HID driver on macOS ⇒ WebHID cannot reach it.
+Transport/UI/simulator milestones (old M11–M20) moved to a follow-up task planned after the
+owner runs a read-only WebUSB probe (separate PR). This task is research + checker + CI only.
+
+Global (repeat in every executor spawn):
+- S=/tmp/claude-1000/-code-razer-driver/9f95b686-1bf0-4dae-a24a-b65ac47b4fc6/scratchpad ; $S/sources
+  = untrusted data. Read only via `python3 -I $S/tools/ctx.py W N REGEX FILE`, count.py, Read, or the
+  checker (fs reads only). Never execute/import/npm-install from it, never run git inside it, never
+  copy source text into the repo — only identifiers (path:line, sha prefix, offset, token).
+- Clean-room: no code from Synapse bundle or OpenRazer; zexrox (MIT) adaptations carry attribution.
+- Read/write convention: ID bit 7 set = read (Get = Set|0x80; zexrox host.py:3-4, :172-176; Synapse
+  class-0 table module 11880). It is a convention, not a safety proof: the exact allowlist is primary.
+- Code style: 2-space, single quotes, no semicolons, named exports, `import type`; erasableSyntaxOnly
+  (no enum/namespace/param props). App unit tests src/**/*.test.ts; tools tests tools/*.test.mjs
+  (node:test) — the spec's colocation rule covers app code only.
+- The repo is public: never commit the owner's serial number or anything under $S.
+- protocol.md authoring rules (enforced by the M1 checker since rung 3, 2026-10-14): canonical tables
+  only — every row starts and ends with `|` in column 1, blank line before and after every table, no
+  tables in blockquotes/lists, only allowlisted headers per section (`### Reply layouts` side table in
+  Commands); escape `|` in prose as `\|` (also inside inline code); NO raw HTML at all (comments
+  included); fences are ``` or ~~~ in column 1, golden blocks ```hex … ```; no tables before the first
+  `##` or under unknown `##` headings. A new table shape needs an allowlist entry + test in tools/. -->
+
+## M1: Protocol-doc checker core — grammar, section and table rules, exit-code contract [done]
+- verify: `bash -c 'C=tools/check-protocol-doc.mjs; F=tools/fixtures; node --test tools/check-protocol-doc.test.mjs && node $C --require=commands,golden $F/ok-minimal.md && { node $C --require=commands $F/empty-source.md; test $? -eq 1; } && node $C --require=commands $F/empty-source.md 2>&1 | grep -q "empty Source" && { node $C --require=commands $F/hypothesis-safe.md; test $? -eq 1; } && { node $C --require=commands $F/dir-mismatch.md; test $? -eq 1; } && { node $C --require=golden $F/bad-checksum.md; test $? -eq 1; } && { node $C --require=framing $F/ok-minimal.md; test $? -eq 1; } && node $C --require=framing $F/ok-minimal.md 2>&1 | grep -q "missing section" && { node $C --require=bogus $F/ok-minimal.md; test $? -eq 2; } && npm run lint'`
+- risk: med
+- demo: `node tools/check-protocol-doc.mjs --require=commands tools/fixtures/empty-source.md` exits 1 and prints the row with "empty Source"; the valid fixture passes; an unknown section key exits 2.
+<!-- Files: tools/check-protocol-doc.mjs (Node 24 ESM, built-ins only), tools/check-protocol-doc.test.mjs,
+tools/fixtures/{ok-minimal,empty-source,hypothesis-safe,dir-mismatch,bad-checksum}.md (citations only,
+no source text). oxlint lints tools/*.mjs.
+CLI: node tools/check-protocol-doc.mjs [DOC=.ai_context/knowledge/protocol.md] [--require=k,..|all|none]
+  [--groups=g,..|all] (M2 adds --sources, --only, --write-lock). Exit 0 ok; 1 rule failures (one line
+  each, with section + line no.); 2 usage/IO error incl. unknown key. Fixed message strings that gates
+  grep: "empty Source", "citation not found", "missing section".
+Sections (exact H2 → key):
+- `## Framing` → framing: table | Offset | Size | Field | Meaning | Source | Confidence | covering bytes
+  0..89 contiguously (ranges like 8-87 ok), no gaps/overlaps; section mentions "checksum" and "transaction".
+- `## Transaction and status` → status: `### Status codes` table | Code | Name | Meaning | Source |
+  Confidence | with rows 0x00..0x05; `### Transaction ID` and `### Request cycle` each non-empty with ≥1 citation.
+- `## Control interface` → control: table | Claim | Source | Confidence | ≥5 rows; non-empty
+  `### Interfaces on macOS` (table | Interface | Class | Driver | Usage page/usage | Reports | Source |
+  with rows for interfaces 0..5), `### Protected collections`, `### Transport options`,
+  `### Open questions`; a line matching `^02A7 status: \[(UNVERIFIED|CONFIRMED)\]`.
+- `## LampArray (standard HID lighting)` → lamparray: table | Report | ID | Direction | Size |
+  Fields | Source | Confidence | ≥6 rows (report ids 1..6).
+- `## Commands` → commands: ONE table | Group | Class | ID | Name | Dir | Size | Safe | Confidence |
+  Source | Notes |. Group ∈ device-info, actuation, rapid-trigger, snap-tap, lighting, keymap,
+  hypershift, macro, profile, polling, other. Class/ID `0xNN` lower-case; (Class,ID) unique;
+  Dir=read iff ID ≥ 0x80; Safe=yes ⇒ Dir=read ∧ Confidence=confirmed; Confidence ∈ confirmed | likely |
+  [HYPOTHESIS]; Source non-empty with ≥1 zexrox|synapse citation (url-only rows fail).
+  --groups: each listed group has ≥1 row OR a `### Gaps` bullet `- <group>: <reason> — <citation>`;
+  device-info must have confirmed firmware AND serial rows (Gaps does not apply). Also a line
+  `^Diagnostics reads: ` listing 0xCC:0xII items; each must be a Safe=yes row.
+- `## Golden packets` → golden: blocks `### G<n>: request|response <name>`, then `- Source: <cites>`,
+  then a ```hex block of exactly 90 bytes; byte 88 = XOR of bytes 2..87; data size (byte 5) ≤ 80;
+  (byte6,byte7) is a Commands row whose Confidence ≠ [HYPOTHESIS]; ≥2 requests and ≥1 response.
+- `## Feature matrix` → matrix: | Feature | Synapse UI area | RZ03-0498 | Confidence | Source |,
+  ≥10 rows, RZ03-0498 ∈ yes|no|unknown, Source non-empty.
+- `## Sources` → sources: links .ai_context/knowledge/protocol-sources.md (no duplication, INDEX H2).
+Citation grammar (cells may hold several, separated by "; "):
+  zexrox:<path>:<line>[-<line>]@840f03dc[#<token>]   synapse:<sha8>@<offset>#<token>
+  chromium:<path>:<line>@<commit>[#<token>]   openrgb#4418:<note-id>   probe:<repo-path>#<key>
+  url:<https://...> (fact tables and matrix only; never sufficient alone in a Commands row)
+In M1 only grammar is checked; resolution against sources is M2. -->
+
+## M2: Checker source resolution, sources manifest, citation lock [in_progress]
+- verify: `bash -c 'C=tools/check-protocol-doc.mjs; F=tools/fixtures; S=/tmp/claude-1000/-code-razer-driver/9f95b686-1bf0-4dae-a24a-b65ac47b4fc6/scratchpad/sources; node --test tools/ && test -s tools/sources.manifest.json && node $C --require=none --sources=$S $F/ok-minimal.md && { node $C --require=none --sources=$S $F/bad-anchor.md; test $? -eq 1; } && node $C --require=none --sources=$S $F/bad-anchor.md 2>&1 | grep -q "citation not found" && { node $C --require=none --sources=$S $F/bad-zexrox-line.md; test $? -eq 1; } && { node $C --require=none --sources=/nonexistent $F/ok-minimal.md; test $? -eq 2; } && npm run lint'`
+- risk: med
+- demo: the checker resolves every citation against the downloaded sources: a Synapse token not at its exact offset, or a zexrox line that does not contain the cited command, fails; a missing or mismatched sources directory exits 2 instead of silently passing.
+<!-- --sources=DIR: verify DIR against tools/sources.manifest.json (hashes only: zexrox full commit
+840f03dca68c7f7a3b8f867475a2c8e9a355a1bc read from DIR/zexrox/.git/HEAD|refs as a FILE — never run git;
+sha256 of each Synapse .js under DIR/synapse-web; later entries for chromium/openrgb). Missing dir or
+mismatch → exit 2. Resolution:
+- zexrox: file exists, line range in file and non-blank; #token (if given) occurs in the range; a
+  Commands row whose citations are all zexrox needs its ID as `0x<id>` or `<cc>:<id>` (any case)
+  within the cited range ±2 lines.
+- synapse: file with sha256 prefix exists; the code-point substring at <offset> equals <token>
+  exactly (build a code-point array once; offsets are Python str indices as ctx.py prints them,
+  NOT UTF-16).
+- chromium: DIR/chromium/<path> line exists (+token). openrgb: note id occurs in DIR/openrgb-4418/*.
+  probe: repo file exists and contains <key>.
+--only=k,..: resolve only those kinds (CI uses --only=zexrox); others fall back to the lock.
+Lock tools/citations.lock.json: { "<citation>": "<sha256 of the resolved window text>" }.
+--write-lock regenerates it from DIR. Without --sources, checking the default doc requires every
+citation to be in the lock and no stale entries; with --sources, hashes are recomputed and compared.
+Fixtures stay citation-only. Tests use temp-dir FAKE source trees (CI-runnable); the gate also runs
+against the real $S. Fixture bad-zexrox-line.md cites a real host.py line that lacks the command ID.
+2026-10-14 (M1): parseCitation returns {kind, text} only — extend it (path, lines, sha, offset, token).
+`parseArgs(['--sources=/tmp'])` currently throws in a test — update that test. MSG.citationNotFound is
+exported but unused. ok-minimal.md cites zexrox:native/host.py:22@840f03dc for 00:81/00:82 — make
+sure it resolves under --sources (line 22 must carry both IDs within ±2 lines). -->
+
+## M3: protocol.md — framing, transaction ID, status codes, request cycle [pending]
+- verify: `bash -c 'S=/tmp/claude-1000/-code-razer-driver/9f95b686-1bf0-4dae-a24a-b65ac47b4fc6/scratchpad/sources; node tools/check-protocol-doc.mjs --require=sources,framing,status --sources=$S && grep -q "re-read" .ai_context/knowledge/protocol.md'`
+- risk: med
+- demo: protocol.md explains every byte of the 90-byte report, all status codes (incl. 0x00 "new command"), the transaction-ID sequence and the request cycle; every claim's citation resolves against the downloaded sources.
+<!-- Use the USB path only (module 17937), never the BLE subclass 18715 (@518703 checksum, @520808
+status desc — variable-length, wrong for us). Anchors (bundle c1e6a425): _calculateChecksum @430900
+(XOR bytes 2..87 → byte 88); _getTransactionId @430969 (returns then increments, resets so it emits
+0..30; txId init `this.transactionId=0` in base module 5076 @221026 ⇒ first requests carry txId 0, 1);
+_createDataSend @431065 (layout); WebHID connectDevice @431359 only calls open() — no handshake;
+_getUSBTransferInResult @432623 (status switch 0..5; case 0 → ERROR_USB_TRANSFER_IN_NEW_COMMAND
+@433870); receiveFeatureReport @433158 (91-byte reply: byte 0 stripped @433224; uses
+new Uint8Array(e.buffer) ignoring byteOffset); status names RZ_STATUS_DESC module 64085 @1996551
+(0 New Command, 1 Busy, 2 Successful, 3 Failure, 4 Timeout, 5 Not Supported, 6–11 others);
+SLEEP_TIME_BETWEEN_OUT_IN=5, MAX_RETRY_IN 10, MAX_RETRY_OUT 20 (Synapse resends).
+zexrox host.py: validate_packet :105, packet_checksum :129, razer_reply :141, BUSY_STATUS/BUSY_POLL_*
+:221-223 (0.5 s budget, 20 ms), re-read loop :420-437 ("never rewrite"), status names :543.
+### Request cycle must record: Synapse resends on status 0/3/4 and on txId/class/id mismatch; zexrox
+re-reads only, against a real 02A7. DECISION for this repo: send once, re-read only, never resend;
+status 0x00 or 0x01 with matching header = pending; budget/interval cite zexrox (0.5 s / 20 ms),
+not Synapse's 50 ms (which assumes resend). Reply checksum: neither source validates it ⇒ record it
+as a diagnostic, never reject on it (until hardware evidence says otherwise).
+Also create `## Sources` linking protocol-sources.md; doc header states citation formats and
+"Synapse targets 02D0 (superset); zexrox runs against a real 0498". Run --write-lock. -->
+
+## M4: protocol.md — device-info commands, reply layouts, golden packets, diagnostics allowlist [pending]
+- verify: `bash -c 'S=/tmp/claude-1000/-code-razer-driver/9f95b686-1bf0-4dae-a24a-b65ac47b4fc6/scratchpad/sources; node tools/check-protocol-doc.mjs --require=sources,framing,status,commands,golden --groups=device-info --sources=$S && grep -qx "Diagnostics reads: 0x00:0x81, 0x00:0x82" .ai_context/knowledge/protocol.md'`
+- risk: high
+- demo: protocol.md lists Get Firmware Version (00:81) and Get Serial (00:82) as confirmed, safe reads with exact sizes and reply layouts, plus golden packets G1 (firmware request, txId 0), G2 (serial request, txId 1) and G3 (a firmware reply) whose checksums the checker recomputes.
+<!-- Sizes/layouts: firmware [size 2, class 0x00, id 0x81], major = data[0], minor = data[1]; serial
+[size 22, 0x00, 0x82], printable ASCII (module 38287 @1093595 — trace from the pid-720 device module
+5315 @235199). zexrox host.py:22 READ_COMMANDS lists (0x00,0x81),(0x00,0x82) as reads forwarded to a
+real 02A7 ⇒ confirmed when Synapse matches. Also document Set Serial 00:02 (size 22, module 11880
+@280740) as a write with Safe=no — it differs from 00:82 only by bit 7, which is why M11's byte guard
+exists. Other class-0 reads (00:84/86/87, 0x0f reads from host.py:22-23) only if name+size are
+citable; they stay Safe=no in this task. Goldens: compute bytes with a throwaway `python3 -I` script
+in $S, never with repo code. G3 reply values must be labelled illustrative. No [HYPOTHESIS] byte in
+any golden. STOP rule: if 00:81/00:82 size or layout cannot be cited, fail and report — do not invent.
+Run --write-lock.
+2026-10-14 (M1): the checker enforces byte 88 = XOR 2..87 on EVERY golden block, responses included —
+compute G3's checksum correctly (it is illustrative anyway); a real captured reply with a bad checksum
+would need a documented rule change, never a silent edit. -->
+
+## M5: protocol.md — control interface: macOS interface map, protected rules, transport options [pending]
+- verify: `bash -c 'S=/tmp/claude-1000/-code-razer-driver/9f95b686-1bf0-4dae-a24a-b65ac47b4fc6/scratchpad/sources; node tools/check-protocol-doc.mjs --require=sources,framing,status,commands,golden,control --groups=device-info --sources=$S && grep -q "4418" .ai_context/knowledge/protocol.md && grep -q "probe:.ai_context/knowledge/hid-02a7-macos.txt" .ai_context/knowledge/protocol.md'`
+- risk: high
+- demo: protocol.md explains which of the keyboard's six USB interfaces carries what, why a web page using WebHID cannot reach the Razer control channel (interface 3) on macOS, what Chrome's WebHID/WebUSB protection rules allow, and the transport options for the follow-up task.
+<!-- Evidence:
+- Owner dump .ai_context/knowledge/hid-02a7-macos.txt (cite as probe:.ai_context/knowledge/hid-02a7-macos.txt#<key>,
+  e.g. #IOUSBHostInterface@3): interfaces 0 boot kbd (1/6), 1 multi (7 TLCs, 47 B inputs ids 1,2,3,4,5,7,11),
+  2 mouse (1/2), 3 NO driver bound, 4 LampArray (0x59/1, feature ids 1–6, max 51 B), 5 vendor FF00 (64 B in/out);
+  Razer DriverKit event services on 0–2. Fill `### Interfaces on macOS` from it.
+- zexrox: interface 3 is the one it drives on Windows (native/host.py:456-464), report id 0 + 90 B
+  send (:446) and get_feature_report(0, 91) (:410-415). zexrox also opens interface 1 (mi_01, :319-330)
+  — record what for.
+- Synapse (02D0): product filter vendorId + productId + usagePage p.MU = 12 (@2672178);
+  isFeatureReportDevice @2677504 (exactly 1 collection, usagePage 12); connectHardwareEventDevice
+  ~@2676200 uses a multi-collection device with input reports (compare 02A7 interface 1).
+  zexrox virtual-hid.js:227-234 = shape Synapse expects for 02D0, NOT the real 02A7 descriptor.
+- Chromium: fetch the WebHID protected-usage logic (IsAlwaysProtected or equivalent; the critic found
+  raw.githubusercontent.com/chromium/chromium/main/services/device/public/cpp/hid/hid_usage_and_page.cc
+  → 404 — locate the real path first, e.g. GitHub code search API or chromium.googlesource.com
+  ?format=TEXT base64) AND the WebUSB protected interface classes list (HID class 3 is expected to be
+  protected for claimInterface) plus the control-transfer permission check (device- vs interface-
+  recipient). Save under NEW dir $S/sources/chromium/<path>, pin commit, add to manifest. Record whether
+  feature reports in a protected keyboard/mouse collection are exempt.
+- OpenRGB #4418: fetch https://gitlab.com/api/v4/projects/CalcProgrammer1%2FOpenRGB/issues/4418 and
+  .../notes?per_page=100 into NEW dir $S/sources/openrgb-4418/; decode any 02A7 descriptor/lsusb by hand
+  (especially interface 3: endpoints, HID report descriptor); if none, one Claim row saying so. Manifest.
+### Transport options (facts + open questions only; the follow-up task decides): (a) WebUSB with
+device-recipient class GET/SET_REPORT to wIndex 3 — untested, pending the owner's probe; (b) native
+access (Tauri desktop app via IOKit/libusb) — interface 3 has no driver bound, so it is claimable
+[HYPOTHESIS until tested]; (c) WebHID only for LampArray lighting (interface 4) and the inputs on
+interfaces 1/5. `02A7 status:` stays [UNVERIFIED] for the interface-3 channel on macOS. Run --write-lock. -->
+
+## M6: protocol.md — actuation, Rapid Trigger, Snap Tap commands [pending]
+- verify: `bash -c 'S=/tmp/claude-1000/-code-razer-driver/9f95b686-1bf0-4dae-a24a-b65ac47b4fc6/scratchpad/sources; node tools/check-protocol-doc.mjs --require=sources,framing,status,commands,golden,control --groups=device-info,actuation,rapid-trigger,snap-tap --sources=$S && grep -qE "^\| *snap-tap *\| *0x02 *\| *0xa1 *\|" .ai_context/knowledge/protocol.md'`
+- risk: med
+- demo: protocol.md documents actuation point, Rapid Trigger (incl. continuous) and Snap Tap commands with sources, including that the RZ03-0498 takes Snap Tap as 02:a1/02:21 where Synapse sends 02:a7/02:27.
+<!-- DOC-ONLY: never touch src/ or the Diagnostics reads line. Seeds: zexrox host.py:29-69 EXTRA_READS
+(02:99 actuation, 02:9a RT, 02:a0 continuous RT, 02:9f/02:af adjustment mode, 02:a8 bottom dead-zone,
+02:a7/02:ac Snap Tap, 02:b1 dual keypress priority; with sizes); translate_request :169-219 (0498:
+02:a7/02:27 size 15 → 02:a1/02:21 size 4) ⇒ 02:a1/02:21 confirmed for 0498, 02:a7 not confirmed for
+0498. Setters (ID & 0x7f) and arg layouts from the Synapse bundle only ⇒ at most `likely` for 0498.
+Features the zexrox README:25 lists as unsupported on 0498 keep their rows with a Notes flag. All
+writes Safe=no. Unsourced → `### Gaps` bullet, never invented. Run --write-lock. -->
+
+## M7: protocol.md — lighting commands [pending]
+- verify: `bash -c 'S=/tmp/claude-1000/-code-razer-driver/9f95b686-1bf0-4dae-a24a-b65ac47b4fc6/scratchpad/sources; node tools/check-protocol-doc.mjs --require=sources,framing,status,commands,golden,control,lamparray --groups=device-info,actuation,rapid-trigger,snap-tap,lighting --sources=$S && test "$(grep -cE "^\| *lighting *\|" .ai_context/knowledge/protocol.md)" -ge 4'`
+- risk: med
+- demo: protocol.md lists the Razer lighting commands (LED state, effects, brightness, per-key custom frame), each cited, and a LampArray section describing the keyboard's standard lighting interface (interface 4) report by report.
+<!-- DOC-ONLY. Seeds: zexrox host.py:59 (03:80 Get LED State), :355-369 (03:00 Set LED State, LED id 8,
+game-mode LED), host.py:22-23 READ_COMMANDS 0f:80/0f:82/0f:84/0f:90 (name them only from Synapse).
+Synapse: effect setters, brightness, custom frame, reached from the pid-720 device module 5315.
+No golden packets from writes.
+LampArray section: decode report ids 1–6 from the owner dump's interface-4 descriptor (probe: citation)
+and name each field from the USB-IF HID Usage Tables, Lighting and Illumination page 0x59 (cite
+url:https://usb.org/... — fetch the HUT PDF/text into NEW dir $S/sources/hut/ and add to manifest if a
+stable URL exists). Include LampArrayAttributes (1), LampAttributesRequest (2) / Response (3),
+LampMultiUpdate (4), LampRangeUpdate (5), LampArrayControl/AutonomousMode (6). Run --write-lock. -->
+
+## M8: protocol.md — keymap, Hypershift, macro commands [pending]
+- verify: `bash -c 'S=/tmp/claude-1000/-code-razer-driver/9f95b686-1bf0-4dae-a24a-b65ac47b4fc6/scratchpad/sources; node tools/check-protocol-doc.mjs --require=sources,framing,status,commands,golden,control --groups=device-info,actuation,rapid-trigger,snap-tap,lighting,keymap,hypershift,macro --sources=$S && grep -qE "^\| *macro *\| *0x06 *\|" .ai_context/knowledge/protocol.md'`
+- risk: med
+- demo: protocol.md covers key remapping, the Hypershift layer and onboard macros, each cited; anything the sources do not pin down is visibly tagged [HYPOTHESIS] or listed under Gaps.
+<!-- DOC-ONLY. Seeds: zexrox EXTRA_READS keymap 02:84, 02:8c-02:8f, 02:92, 02:9b, 02:9e, 02:b2, 02:b5-02:b7;
+macros 06:80, 06:88-06:8c, 06:8e. Hypershift: if Synapse encodes it as a layer argument of key
+assignment rather than its own command, write a `### Gaps` bullet (`- hypershift: ... — <citation>`)
+— never invent a command. Run --write-lock. -->
+
+## M9: protocol.md — profiles, polling rate, feature matrix [pending]
+- verify: `bash -c 'S=/tmp/claude-1000/-code-razer-driver/9f95b686-1bf0-4dae-a24a-b65ac47b4fc6/scratchpad/sources; node tools/check-protocol-doc.mjs --require=all --groups=all --sources=$S && grep -q "zexrox:README.md:25@840f03dc" .ai_context/knowledge/protocol.md'`
+- risk: med
+- demo: protocol.md is complete: onboard profiles and polling-rate commands are documented, and a feature matrix marks every Synapse feature of this keyboard yes / no / unknown for the RZ03-0498 with a source.
+<!-- DOC-ONLY. Profiles: host.py:30-34,63 (05:80/81/84/88/8a/8c; host.py:25-28 notes 05:8a size 1 blocked
+in 0.1.3). Polling: host.py:64 00:c0 Get USB High Speed Polling Period (size 2) + Synapse setter.
+Matrix rows: per-key actuation, Rapid Trigger, continuous RT, Snap Tap, single-key Snap Tap, bottom
+dead-zone, analog report / Analog V3, Mod-Tap, dual keypress priority, Game Mode key lock, Tournament
+Mode, lighting effects, per-key RGB, brightness, key remap, Hypershift, macros, onboard profiles,
+polling rate. "no" rows cite zexrox README:25 (6 features); "yes" needs 0498-specific evidence (zexrox
+forward/rewrite); 02D0-only evidence ⇒ unknown. Run --write-lock. -->
+
+## M10: Wire the protocol check into verify and CI [pending]
+- verify: `bash -c 'S=/tmp/claude-1000/-code-razer-driver/9f95b686-1bf0-4dae-a24a-b65ac47b4fc6/scratchpad/sources; T=$(mktemp -d) && mkdir $T/zexrox && cp -r $S/zexrox/. $T/zexrox/ && node tools/check-protocol-doc.mjs --sources=$T --only=zexrox && grep -q "\"check:protocol\"" package.json && grep -q "only=zexrox" .github/workflows/pages.yml && grep -q "840f03dca68c7f7a3b8f867475a2c8e9a355a1bc" .github/workflows/pages.yml && npm run verify'`
+- risk: med
+- demo: `npm run verify` now also checks the whole protocol reference against the citation lock, and CI additionally resolves every zexrox citation against a checkout of zexrox at the pinned commit — a made-up zexrox citation fails CI.
+<!-- package.json: "check:protocol": "node tools/check-protocol-doc.mjs && node --test tools/" chained
+into verify right after lint (no --sources — CI has no $S; the lock covers Synapse citations).
+pages.yml verify job: before npm run verify, clone https://github.com/zexrox/huntsman-synapse-web into
+$RUNNER_TEMP/src/zexrox, checkout the pinned full sha (data only — never run anything from it), then
+`node tools/check-protocol-doc.mjs --sources=$RUNNER_TEMP/src --only=zexrox`. Pin action versions as
+already used in the file. Also add a one-line pointer to protocol.md in protocol-sources.md.
+2026-10-14 (M1 verifier): with no flags the checker runs --require=all but NO group checks — make
+check:protocol run `--require=all --groups=all` so verify/CI also enforce group coverage and the
+device-info firmware/serial rule. -->
+
+## M11: State write-back, PR with green CI — owner approves the merge [pending]
+- verify: `bash -c 'npm run verify && ! git ls-files | grep -qE "(^|/)(host\.py|virtual-hid\.js|main\.[0-9a-f]{8}\.js)$" && grep -q "protocol.md" .ai_context/state.md && test "$(gh pr view task/protocol-reference --json headRefOid -q .headRefOid)" = "$(git rev-parse HEAD)" && timeout 420 gh pr checks task/protocol-reference --watch --fail-fast'`
+- risk: med
+- checkpoint: human
+- demo: a pull request into master shows every CI check green, including the zexrox citation check; the owner reviews protocol.md and the feature matrix, and acking this checkpoint approves the merge.
+<!-- Before pushing: audit the .ai_context diff against INDEX H1/L1 (no secrets, internal URLs, real
+names, no serial numbers, no unrelated-app names) and confirm no source text entered the repo.
+INDEX.md: add a row for knowledge/protocol.md and knowledge/hid-02a7-macos.txt. state.md Now/Next
+(≤5 KB, dated): next = follow-up transport task after the WebUSB probe. Push without force;
+`gh pr create --base master`; body = AC1–AC6 checklist + attribution line. DO NOT merge. -->
+
+## M12: Merge and confirm the master build [pending]
+- verify: `bash -c 'test "$(gh pr view task/protocol-reference --json state -q .state)" = MERGED && M=$(gh pr view task/protocol-reference --json mergeCommit -q .mergeCommit.oid) && test "$(gh run list --workflow pages.yml --commit "$M" --json conclusion -q ".[0].conclusion")" = success'`
+- risk: low
+- demo: the PR is merged and the master workflow (verify incl. the protocol check, then Pages deploy) is green on the merge commit.
+<!-- Only after the M11 ack: push the branch (plan statuses), then `gh pr merge task/protocol-reference
+--merge` (no force; keep the branch). Watch the run for the merge commit. -->

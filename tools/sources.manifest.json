@@ -1,0 +1,88 @@
+{
+  "zexrox": {
+    "commit": "840f03dca68c7f7a3b8f867475a2c8e9a355a1bc"
+  },
+  "synapse": {
+    "dashboard/assets_js_base.js": "b070263d244b62f1a80339156ac2930ac1b5263b3b9472019449e9988ed70518",
+    "dashboard/dashboard_chunks_comp-AddDeviceTile.tsx-B3XKcVth.js": "e3916ad099420f13df0ca150d09cfdba65aa3e859362f971b9f3d1a526e45c89",
+    "dashboard/dashboard_chunks_comp-Button.tsx-C_2HEEl_.js": "d06d16827c552c09f1d106aaee165bda356e4f56ee75951ba16923be3299073c",
+    "dashboard/dashboard_chunks_comp-CheckBox-BofkZ620.js": "fcc60e8bd9ea4c9b4cc6d152d02e720f4ed760ed97c0da7cba6c4cf59a2ded4d",
+    "dashboard/dashboard_chunks_comp-CloseIcon.tsx-C-_EeMxr.js": "afc829fc9a0947df003f74cfb130ad9e42f9017f15093042844deb88243c6828",
+    "dashboard/dashboard_chunks_comp-CopyButton.tsx-Dt_0w8Sb.js": "d51921e4464fc2378a76b338c9d995a95bd0e879a22e7fc8bdb3e24d8e88092b",
+    "dashboard/dashboard_chunks_comp-DeviceInUse.tsx-C2XZEhe0.js": "d921d6d9e665160cc7c7272b7e62f3022de275172b687f8e528201a4d99d4c99",
+    "dashboard/dashboard_chunks_comp-DeviceTile.tsx-CGC4EycK.js": "e55a0711e253da4bea1254bb100946c50db8d9bfa0f89b9ef7765f663ee32740",
+    "dashboard/dashboard_chunks_comp-DeviceTileTournamentMode.tsx-BMWlKqy1.js": "1d2880b433eb6704132c51bfa2e405490d1a3a6dd1c02f1b19bffda4422bd07b",
+    "dashboard/dashboard_chunks_comp-Dropdown-Ch32SNOD.js": "cbb6d6726962207fc2983248de1f28d96504772542fee5d5c454fc4a3ecf55f5",
+    "dashboard/dashboard_chunks_comp-ErrorBoundary.tsx-Dya1CkD9.js": "220fa8a9f82f0be49469c09fd29c025a65cbaf5538f41503db479bdc66231c59",
+    "dashboard/dashboard_chunks_comp-Feedback-BR2fQSn8.js": "ec1bdcc9e8475b36c85e43dff129109aabe09f6e2fb364c8b3c89418c40d4369",
+    "dashboard/dashboard_chunks_comp-FirmwareUpdates-CY2yP85I.js": "b2d617d124260721520dd28d57e0ce23cf8aaf141393613a9a26f49d1697b37b",
+    "dashboard/dashboard_chunks_comp-FirmwareUpdates.tsx-Ddkc_Sku.js": "710b9be3c7a57b10b13285b27be018a6d6f1e87edea66eb6b1aaad4eddd85075",
+    "dashboard/dashboard_chunks_comp-IconLoading.tsx-DI412XGV.js": "5241e00031b1aff0edfa37ede28b50aa1e4d65873a7d928650647bde239cef3f",
+    "dashboard/dashboard_chunks_comp-IframeContainer.tsx-DwxnxJqI.js": "a2d1d5bfa9d05516a7f60a457ac5663191ede75590e599c7fe8c4b57b4895a35",
+    "dashboard/dashboard_chunks_comp-MinimumScreenSizeWarning-Bqqr3tJY.js": "f7ce6a130bf119d467a99e436615c313e51de44906ad71b4859b874dd484814d",
+    "dashboard/dashboard_chunks_comp-NavigationBar.tsx-IEprWGb0.js": "1a124f9c12d6283dc8261e03406fde3470c0d6f467f8efe1d83334284876bc4a",
+    "dashboard/dashboard_chunks_comp-NoDeviceSupportedTide.tsx-3p5eusy4.js": "1cba31447c003ba9a950e9f11ea8ccd29a523b58ca3d71358e7719a92393784b",
+    "dashboard/dashboard_chunks_comp-NotSupportDeviceWarning-BxMAmhCP.js": "0275efadef6774282130888f2d6ffe19b7b3f55cd363452c9eb721b25e85db8f",
+    "dashboard/dashboard_chunks_comp-Popover.tsx-tmLMF_bW.js": "27ca4bb9dc43efcee4cd715627c92cff729a88159553a49b99e33802d1496704",
+    "dashboard/dashboard_chunks_comp-Rating-DPuoXuhp.js": "dab43c7305b0d3b33fa8a4d0157e14f32a754ec2090de038bb3b0e303fea76b3",
+    "dashboard/dashboard_chunks_comp-RemoveDeviceDialog.tsx-DfKOjK1X.js": "90ebf5aabecc35893f6b7589cbb646b9e99b2cc4e861fe149f76f4fbcd3945f6",
+    "dashboard/dashboard_chunks_comp-ServiceWorkerUpdate.tsx-CtAKMthS.js": "adeb6a096b376b15300374fb9b9d646bb8c3c025f0620f3f1e0c262150c203c7",
+    "dashboard/dashboard_chunks_comp-Settings-Ci8PXjiy.js": "8999d774b5d5d68ee4abcde289929072067cf17a4314173435d4a7819394533e",
+    "dashboard/dashboard_chunks_comp-SidebarNav.tsx-B-B9zfFd.js": "507558243eade92b18401ca6bbace0a56db3bad3a2ac6b235226667b8d082b46",
+    "dashboard/dashboard_chunks_comp-Tab-B8Yx-MaZ.js": "09b1e9b31d093da4d9ec720f3f7377f63bbd92a68da38fa4c0653d2e5e292ae2",
+    "dashboard/dashboard_chunks_comp-Toggle.tsx--kIdfm4F.js": "9a9d2d0c543666bf50672879593ab957ddb489f26279b9c0514f1327158caf54",
+    "dashboard/dashboard_chunks_comp-Tooltip.tsx-BjojCgHr.js": "55b4e301f7364d94816e7375caa34f8459309524e444d5e468ccf8b25e0ad853",
+    "dashboard/dashboard_chunks_comp-WebHidNotAvailable.tsx-yGEUiCtO.js": "b8bfe96eb3897cbe83d060989c159ab6ab7979c1613fa5489c77b62a8db615f3",
+    "dashboard/dashboard_chunks_page-Dashboard.tsx-CY5K1pX2.js": "e004f18349e5e7c11f79514868705b059baaa112b8edf224a0ba66e2bae5fcc5",
+    "dashboard/dashboard_chunks_page-Device.tsx-B_cNd9x2.js": "cb967407e4fba50576a1959b7889578d75360b36b4f5a75299a9cc631853dcd5",
+    "dashboard/dashboard_chunks_page-Feedback.tsx-Dz9CZdiY.js": "d55ff22a7f0946a33268ad1cf381a220ce048ae6cc64d8e8f85001ca847f13f4",
+    "dashboard/dashboard_chunks_page-Layout.tsx-xBQZMhVb.js": "327fc4671f2b7c0f5a537458af0882564c1ee1a85d71407508ea8a1cba3ad83b",
+    "dashboard/dashboard_chunks_page-Login.tsx-D0cbO3AO.js": "af53e1f5df37b4716138490cf72da289e3ea641d803a9ff7d75c7ffa79c5e4c9",
+    "dashboard/dashboard_chunks_page-Main.tsx-BWeDoHux.js": "0204a712427ff636692774614b08c52f7f8232f88322c57bbc87e6d876ce795c",
+    "dashboard/dashboard_chunks_page-Settings.tsx-CCVvqs_b.js": "6245396c67d708ee17e27ce49bfcffff8acf1d19b9ea2800f1869a286a922721",
+    "dashboard/dashboard_chunks_page-UserProfileMenu.tsx-BRokxKZ4.js": "ee6c956e6c5ef590f41d232618e2669b9745dd150a5a934bcc4ec97f5474ad25",
+    "dashboard/dashboard_chunks_vendor-DZt8o8xH.js": "2f7eb673b2b8a62011e5a8937ae4f25c4d83c6ebcac64be9e6ef8224ff088100",
+    "dashboard/dashboard_chunks_vendor-axios-BcEKKtMW.js": "e1701894a862c9b6143394d58c5feaf3894ffce7b17f72383a12fb40d854ed91",
+    "dashboard/dashboard_chunks_vendor-redux-DG8nAaln.js": "0a925bb99b4b93ad05ec3b4c99b3ad5851a59f8d5901f68dd5b96f277a7ff5f6",
+    "dashboard/dashboard_chunks_vendor-router-CzH2QuvK.js": "0ee2ae65d2f18d3652cd03cf1fb75450cd385f17d664bad3fa8f6b46fa47bb2a",
+    "dashboard/dashboard_entry-main.js": "db710f3c41193e0c6b56d2e8b4acec129797307030ba447359b50aee95836dec",
+    "dashboard/dashboard_registerSW.js": "0d9334a6adda4899a37148c1e4e656fa04a26ad0f8631a2794ba01605ba74752",
+    "products720/assets_base.js": "b070263d244b62f1a80339156ac2930ac1b5263b3b9472019449e9988ed70518",
+    "products720/assets_manifest.js": "ccf30d4cf77760e2df288b9252c6c1e850456db3e1c72d778f2f8aff7ea24dce",
+    "products720/main.2f427e06.js": "c1e6a425196d7f1f82e052535af29e69c5327ba8d3ea1fe267fbd65cfb41f509"
+  },
+  "chromium": {
+    "commit": "1aeca202fed13742d05b130fcb49e418f98fc4ca",
+    "files": {
+      "services/device/public/cpp/hid/hid_report_utils.cc": "bac36856a3535287efb29ae1dc160cbee36e88e195ce07a3e1dfcff0d0875bd1",
+      "services/device/usb/mojo/device_impl.cc": "2248a0be947896273e9e43a3d9807f2578ae4f4dd017e9b6ef7d8d22f78351b2",
+      "content/browser/usb/web_usb_service_impl.cc": "bbac2c9fdf8f6b9aa6011b3a7202c3a3fefa57da750adb590a714e0259fb766d",
+      "chrome/browser/usb/chrome_usb_delegate.cc": "fce38b925518275bbbd6c2fedcec096addb3d87110b297ce1e0fe19e02feba0c",
+      "third_party/blink/renderer/modules/webusb/usb_device.cc": "1ceb5d810a31c85d2e6c287cb7378ea110dd109a2a4fbab2d38376d43fd35e08",
+      "services/device/public/cpp/device_features.cc": "130a00ea1a0883e7b8aadf771402df69a97cdce1c0535a93f17abdb511c9aa3f",
+      "services/device/hid/hid_connection.cc": "046fd2b35095d02956e938a0a300b2d257b456a73bdd42469584daa29958bebb",
+      "services/device/public/cpp/hid/hid_blocklist.cc": "2962ad479ee83c5d4e64a8585ce09ad8f000e1a8ee64621699299aa0617298ca",
+      "services/device/public/mojom/hid.mojom": "5970367d051f577f398723f2f2f5f2c67b1146bb289bcda475fa2789967881a7"
+    }
+  },
+  "openrgb-4418": {
+    "fetched": "2026-10-14",
+    "urls": {
+      "issue.json": "https://gitlab.com/api/v4/projects/CalcProgrammer1%2FOpenRGB/issues/4418",
+      "discussions.json": "https://gitlab.com/CalcProgrammer1/OpenRGB/-/issues/4418/discussions.json"
+    },
+    "files": {
+      "issue.json": "52081fe81cff702cefe26fda7472d0c277150657ba825b511a51bf76468ee2b1",
+      "discussions.json": "247c36ad12db0a5d5658569792d82c398e39b79591b2c6065e8fea03bf4b1c57"
+    }
+  },
+  "hut": {
+    "fetched": "2026-10-14",
+    "urls": {
+      "hut1_5.pdf": "https://usb.org/sites/default/files/hut1_5.pdf"
+    },
+    "files": {
+      "hut1_5.pdf": "f4ead217b01134f89199155ed616d4eeae9ad40a5f73dad9544002b592c07db3"
+    }
+  }
+}

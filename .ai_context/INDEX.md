@@ -12,6 +12,7 @@ auto-injected at every session start (hooks); read the rest **on-demand**:
 | Design choice, picking between options, dependency pick | `decisions.md` (check existing ADRs first) |
 | Domain reference needed (contracts, conventions, terms) | the matching `knowledge/*.md` (create on demand, add a row here) |
 | Past event, debate, retro, specific date | search `journal/YYYY-MM-DD-*.md` |
+| Protocol bytes, request cycle, macOS interface map, feature matrix | `knowledge/protocol.md`; raw macOS evidence: `knowledge/hid-02a7-macos.txt`, `knowledge/webusb-probe-02a7-macos.txt` |
 | Where a protocol fact may come from, and its license | `knowledge/protocol-sources.md` |
 | Sensitive scratch, local-only notes | `private/` |
 | Active `/task` (`tasks/CURRENT` exists) | that task's `brief.md` + `plan.md` + `lessons.md` (auto-injected too) |

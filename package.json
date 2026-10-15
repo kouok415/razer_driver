@@ -9,10 +9,11 @@
     "build": "tsc -b && vite build",
     "typecheck": "tsc -b",
     "lint": "oxlint",
+    "check:protocol": "node tools/check-protocol-doc.mjs --require=all --groups=all && node --test tools/",
     "test": "vitest run",
     "e2e": "playwright test",
     "preview": "vite preview",
-    "verify": "npm run lint && npm test && npm run build && npm run e2e"
+    "verify": "npm run lint && npm run check:protocol && npm test && npm run build && npm run e2e"
   },
   "dependencies": {
     "react": "^19.2.8",

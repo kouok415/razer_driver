@@ -26,6 +26,12 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium
+      # zexrox at the commit pinned in tools/sources.manifest.json, as data
+      # only: nothing in the clone is installed, built or run.
+      - run: |
+          git clone --no-checkout https://github.com/zexrox/huntsman-synapse-web "$RUNNER_TEMP/src/zexrox"
+          git -C "$RUNNER_TEMP/src/zexrox" checkout -q 840f03dca68c7f7a3b8f867475a2c8e9a355a1bc
+      - run: node tools/check-protocol-doc.mjs --require=all --groups=all --sources="$RUNNER_TEMP/src" --only=zexrox
       - run: npm run verify
       - if: github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@v5

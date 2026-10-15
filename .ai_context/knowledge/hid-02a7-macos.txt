@@ -1,0 +1,58 @@
+RZ03-0498 (USB 1532:02A7) HID interfaces as seen by macOS — owner's Mac mini, 2026-10-14.
+Source: owner ran `hidutil list` + `ioreg -l -w0 -r -c IOHIDDevice` (filtered keys; no serial
+numbers). Only the Huntsman entries are kept; other devices on that Mac were dropped.
+Decoded with a throwaway HID-descriptor walker (scratchpad, not in repo).
+
+== hidutil list (AppleUserHIDDevice rows) ==
+UsagePage Usage RegistryID
+1         6     0x10001940f
+89        1     0x10001940d
+1         2     0x10001940b
+1         6     0x100019411
+65280     0     0x100019407
+Event services for (1/6), (1/2), (1/6) use UserClass RazerGenericHIDDriverKit (a Razer DriverKit
+extension is installed on that Mac).
+
+== ReportDescriptor per interface (decoded) ==
+[kbd-boot] PrimaryUsagePage 1 / Usage 6, MaxFeatureReportSize 0
+  05010906a101050719e029e715002501750195088102810119002aff00150026ff007508950681000508190129031500250175019503910295059101c0
+  top-level 0001/0006 -> input id0=8B, output id0=1B
+[kbd-multi] DeviceUsagePairs (1/6),(12/1),(1/128),(1/0); MaxFeatureReportSize 1
+  05010906a1018501050719e029e715002501750195088102190029a015002501750195a081027508951a81010508190129031500250175019503910295059101c0050c0901a101850219002a3c021500263c029501751081007508952d8101c005010980a10185031981298315002501750195038102950581017508952e8101c005010900a10185040903150026ff00350046ff007508952f8100c005010900a10185050903150026ff00350046ff007508952f8100c005010900a10185070903150026ff00350046ff007508952f8100c005010900a101850b0903150026ff00350046ff007508952f8100c0
+  top-level 0001/0006 -> input id1=47B, output id1=1B
+  top-level 000c/0001 -> input id2=47B
+  top-level 0001/0080 -> input id3=47B
+  top-level 0001/0000 -> input id4=47B, id5=47B, id7=47B, id11=47B (four TLCs)
+[kbd-mouse] PrimaryUsagePage 1 / Usage 2, MaxFeatureReportSize 0
+  05010902a1010901a100050919012905150025017501950581027501950381030600ff0940750895021581257f8102050109381581257f7508950181060930093116008026ff7f751095028106c0c0
+  top-level 0001/0002 -> input id0=8B
+[kbd-lamparray] PrimaryUsagePage 89 (0x59 Lighting and Illumination) / Usage 1 (LampArray), MaxFeatureReportSize 51
+  05590901a10185010902a1020903150027ffff000075109501b10309040905090609070908150027ffffff7f75209505b103c085020920a1020921150027ffff000075109501b102c085030922a1020921150027ffff000075109501b10209230924092509270926150027ffffff7f75209505b10209280929092a092b092c092d150026ff0075089506b102c085040950a102090309551500250875089502b1020921150027ffff000075109508b10209510952095309540951095209530954095109520953095409510952095309540951095209530954095109520953095409510952095309540951095209530954150026ff0075089520b102c085050960a10209551500250875089501b10209610962150027ffff000075109502b1020951095209530954150026ff0075089504b102c085060970a10209711500250175089501b102c0c0
+  top-level 0059/0001 -> feature id1=22B, id2=2B, id3=28B, id4=50B, id5=9B, id6=1B
+[kbd-vendor] PrimaryUsagePage 65280 (0xFF00) / Usage 0, MaxFeatureReportSize 0
+  0600ff0900a101150026ff0019002aff00750895400900810209009102c0
+  top-level ff00/0000 -> input id0=64B, output id0=64B
+
+== Finding ==
+No 02A7 interface declares a 90-byte feature report (report id 0) on macOS. zexrox opens exactly
+one collection on "interface 3" and sends report id 0 + 90 bytes there (zexrox
+native/host.py:456-464, :446). Which macOS interface is USB interface 3, and whether any
+interface is hidden from the HID stack, is not yet known.
+
+== USB interface → driver mapping (second owner run, 2026-10-14) ==
+Source: `ioreg -w0 -l -r -n "Razer Huntsman V3 Pro TKL"` filtered to node headers and
+bInterfaceNumber/bInterfaceClass/PrimaryUsagePage/PrimaryUsage/MaxFeatureReportSize/CFBundleIdentifier.
+Device-level user clients of unrelated apps on that Mac were omitted.
+IOUSBHostInterface@0 class 3 → AppleUserUSBHostHIDDevice (1/6, MaxFeature 0) → event service RazerGenericHIDDriverKit (com.razer.appengine.driver)   = kbd-boot
+IOUSBHostInterface@1 class 3 → AppleUserUSBHostHIDDevice (1/6, MaxFeature 1) → event service RazerGenericHIDDriverKit (com.razer.appengine.driver)   = kbd-multi
+IOUSBHostInterface@2 class 3 → AppleUserUSBHostHIDDevice (1/2, MaxFeature 0) → event service RazerGenericHIDDriverKit (com.razer.appengine.driver)   = kbd-mouse
+IOUSBHostInterface@3 class 3 → NO child driver at all (registered, matched, active; no HID device, no user client)
+IOUSBHostInterface@4 class 3 → AppleUserUSBHostHIDDevice (0x59/1, MaxFeature 51)   = kbd-lamparray
+IOUSBHostInterface@5 class 3 → AppleUserUSBHostHIDDevice (0xFF00/0, MaxFeature 0)  = kbd-vendor
+
+== Finding (updated) ==
+USB interface 3 — the one zexrox drives on Windows with report id 0 + 90 bytes — has no HID driver
+bound on macOS, so no IOHIDDevice exists for it and Chrome's WebHID cannot enumerate it.
+[HYPOTHESIS] reasons: the interface lacks the interrupt-IN endpoint macOS's HID driver needs, or its
+descriptor is rejected. Interface 3 is HID class (3), which WebUSB treats as a protected class for
+claimInterface(); whether device-recipient control transfers reach it is untested.

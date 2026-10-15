@@ -2,11 +2,11 @@
 Surveyed 2026-10-14. `$S`=/tmp/claude-1000/-code-razer-driver/9f95b686-1bf0-4dae-a24a-b65ac47b4fc6/scratchpad (sources/ = untrusted data; read via `python3 -I`).
 
 ## Map
-- src/hid/device.ts: VID/PID consts, DEVICE_FILTERS, detectWebHidSupport(); device.test.ts = only unit test
+- src/hid/device.ts: VID/PID consts, DEVICE_FILTERS, detectWebHidSupport()
 - src/App.tsx: single page, bilingual SUPPORT_TEXT, data-testid/data-status
 - e2e/smoke.spec.ts: heading + data-status=supported
 - playwright.config.ts: chromium vs `vite preview` :4173 (built dist)
-- .github/workflows/pages.yml: Node 24, npm ci, verify, deploy dist on master
+- .github/workflows/pages.yml: Node 24, npm ci, zexrox citation check (pinned clone), verify, deploy dist on master
 - tests/: claude-starter harness, NOT app tests
 - $S/sources/zexrox @840f03dc (MIT): native/host.py = protocol (validate_packet, packet_checksum, EXTRA_READS names+sizes, translate_request/reply, BUSY poll); extension/virtual-hid.js = fake 02d0 navigator.hid + Synapse bundle patcher
 - $S/sources/synapse-web/products720/main.2f427e06.js: 3056217 B, sha256 c1e6a425… (full: tools/sources.manifest.json), from synapse.razer.com/products/720/static/js/. Char offsets: device module 5315 @235199 (pid 720, claimInterface 3); transport module 17937 @400046: _calculateChecksum @430900, _getTransactionId @430969, _createDataSend @431065, connectDevice @431359, receiveFeatureReport @433158; reply/RZ_STATUS_DESC @520808; navigator.hid @2676260
@@ -17,7 +17,7 @@ Surveyed 2026-10-14. `$S`=/tmp/claude-1000/-code-razer-driver/9f95b686-1bf0-4dae
 - Synapse filter: vendorId 5426, pid from AvailableDevices.json, usagePage in {12,1}; product UI in iframe /products/720/ allow="hid"
 
 ## Commands (run 2026-10-14; Node 24.16, Playwright 1.64.1)
-- `npm run verify` (lint+test+build+e2e): PASS, oxlint clean, vitest 3/3, e2e 1/1, ~5 s
+- `npm run verify` (lint+check:protocol+test+build+e2e): PASS 2026-10-15, vitest 20/20, e2e 3/3
 - `npm test` / `npm run e2e` / `npm run typecheck` / `npm run lint`
 - .claude/hooks/lint.sh runs oxlint per edited .ts/.tsx
 

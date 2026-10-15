@@ -148,3 +148,49 @@ new entry that references and supersedes the old one.
   would hit the cap again as the follow-up adds facts).
 - **Consequences:** The reference can grow with the follow-up task; a
   dump pasted into it is still caught above 512 KB.
+
+## ADR-005: Request cycle — write once, re-read only
+
+- **Date:** 2026-10-15
+- **Status:** Proposed (task `protocol-reference`); the owner reviews it in
+  that task's PR. The follow-up transport task implements it.
+- **Context:** The two sources run the 90-byte request/reply exchange
+  differently (`knowledge/protocol.md` § Request cycle, cited there).
+  Synapse's WebHID transport writes the request again on status 0x00, 0x03
+  or 0x04, on a busy status that outlasts its reads, and on a reply header
+  that does not match. zexrox, the only source run against a real 02A7,
+  writes once, re-reads every 20 ms for at most 0.5 s, and its comment says
+  never to write the report again.
+- **Decision:** Write each request once. Re-read on a header mismatch
+  (byte 1, 6 or 7) or status 0x00/0x01, every 20 ms, for at most 0.5 s.
+  Any other status with a matching header is final. Out of time = timeout,
+  never a rewrite. A reply-checksum mismatch is logged, not rejected.
+- **Alternatives considered:** Synapse's rewrite loop (its waits' unit is
+  unchecked and it was never shown against a 02A7; [HYPOTHESIS] a rewrite
+  could apply a set twice); returning status 0x00 as final, as zexrox does.
+- **Consequences:** Treating 0x00 as pending is [HYPOTHESIS] — the sources
+  disagree on it. The cycle is unverified on hardware until the follow-up's
+  first read-only contact.
+
+## ADR-006: Read-only diagnostics allowlist, serial kept local
+
+- **Date:** 2026-10-15
+- **Status:** Proposed (task `protocol-reference`); the owner reviews it in
+  that task's PR and may veto the serial read.
+- **Context:** CLAUDE.md requires reads before any write. Set Serial Number
+  (0x00:0x02) and Get Serial Number (0x00:0x82) share class and size and
+  differ in one bit, so a direction flag alone cannot keep a read from
+  becoming a write of the serial (`knowledge/protocol.md` § Commands).
+- **Decision:** A read-only diagnostics probe may send only the (class, ID)
+  pairs on protocol.md's "Diagnostics reads" line — today 0x00:0x81
+  firmware version and 0x00:0x82 serial — each a confirmed, Safe=yes read.
+  The transport compares the whole pair against that list and refuses
+  anything else. The serial reply may be shown to the owner but stays out
+  of logs, copied reports and the public repo; test fixtures use made-up
+  serials.
+- **Alternatives considered:** dropping the serial read (safer, but
+  Synapse shows the serial); gating on a read/write direction bit.
+- **Consequences:** Adding a read to diagnostics means adding a Safe=yes
+  row and editing that line; the checker rejects a listed pair that is not
+  a Safe=yes row (`tools/check-protocol-doc.mjs`). That Safe=yes rows are
+  confirmed reads is the doc's rule, not machine-checked.

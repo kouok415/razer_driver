@@ -1,0 +1,6 @@
+date,harness,area,severity,summary,ref
+2026-10-15,486389d,hooks,friction,stop gate defers an in-progress verify only once per executor spawn so a second stop while it runs is red,journal/2026-10-15-protocol-reference-close.md
+2026-10-15,486389d,hooks,friction,S2 100 KB cap blocked a curated cited reference and needed an owner ADR for a per-file exception,journal/2026-10-15-protocol-reference-close.md
+2026-10-15,486389d,task,friction,lessons.md 4 KB cap filled mid-run so later lessons went to plan comments and the journal,journal/2026-10-15-protocol-reference-close.md
+2026-10-15,486389d,hooks,papercut,gitleaks generic-api-key fires on citation tokens containing key next to a sha256 in the lock file,journal/2026-10-15-protocol-reference-close.md
+2026-10-15,486389d,wrap,papercut,close-out sweep must run on task branch after merge so close-out commits need a second PR,journal/2026-10-15-protocol-reference-close.md

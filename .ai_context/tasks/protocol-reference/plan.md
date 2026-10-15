@@ -299,7 +299,7 @@ file; openrgb-4418 = sha256 of issue.json and discussions.json. Respect the --on
 CI zexrox-only mode keeps working. One test per source kind in tools/check-protocol-doc-sources.test.mjs
 using fake trees (no scratchpad paths, no env). Do not change rule checks or the lock format. -->
 
-## M10: Wire the protocol check into verify and CI [in_progress]
+## M10: Wire the protocol check into verify and CI [done]
 - verify: `bash -c 'S=/tmp/claude-1000/-code-razer-driver/9f95b686-1bf0-4dae-a24a-b65ac47b4fc6/scratchpad/sources; T=$(mktemp -d) && mkdir $T/zexrox && cp -r $S/zexrox/. $T/zexrox/ && node tools/check-protocol-doc.mjs --sources=$T --only=zexrox && grep -q "\"check:protocol\"" package.json && grep -q "only=zexrox" .github/workflows/pages.yml && grep -q "840f03dca68c7f7a3b8f867475a2c8e9a355a1bc" .github/workflows/pages.yml && npm run verify'`
 - risk: med
 - demo: `npm run verify` now also checks the whole protocol reference against the citation lock, and CI additionally resolves every zexrox citation against a checkout of zexrox at the pinned commit — a made-up zexrox citation fails CI.
@@ -322,7 +322,7 @@ changes one line of it).
 verify guards both); flip M10 [done] / M11 [in_progress] only in the commit pushed after the owner approves the
 push — M11's verify needs the PR, so arming it earlier leaves the gate red with nothing to fix. -->
 
-## M11: State write-back, PR with green CI — owner approves the merge [pending]
+## M11: State write-back, PR with green CI — owner approves the merge [in_progress]
 - verify: `bash -c 'npm run verify && ! git ls-files | grep -qE "(^|/)(host\.py|virtual-hid\.js|main\.[0-9a-f]{8}\.js)$" && grep -q "protocol.md" .ai_context/state.md && test "$(gh pr view task/protocol-reference --json headRefOid -q .headRefOid)" = "$(git rev-parse HEAD)" && timeout 420 gh pr checks task/protocol-reference --watch --fail-fast'`
 - risk: med
 - checkpoint: human

@@ -2,6 +2,7 @@
 
 Where protocol facts may come from, with reliability and license.
 Last updated: 2026-10-14.
+The protocol reference built from these sources, with a citation for every fact, is `protocol.md` (checked by `npm run check:protocol`).
 
 | Source | What it gives | Reliability | License / use |
 |---|---|---|---|

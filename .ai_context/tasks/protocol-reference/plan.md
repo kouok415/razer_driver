@@ -334,7 +334,25 @@ navigator.hid" — rewrite it from the rescope. CLAUDE.md DoD needs ADRs: append
 rescope (WebHID cannot reach if3 on macOS; ADR-001's WebHID premise is superseded for the control
 channel), the request-cycle recommendation, and the diagnostics allowlist.
 2026-10-15: ADR-003 (Tauri desktop app, owner-accepted) already records the rescope/transport; still
-owed: request-cycle and diagnostics-allowlist ADRs. -->
+owed: request-cycle and diagnostics-allowlist ADRs. 
+2026-10-15 (drift after M9, BEFORE M11 — orchestrator fix pass + light verify, after the M10 commit):
+protocol.md D1 class-0 "confirmed by both sources"/"Confirmed (both sources)" → zexrox forwards it; add to the
+top Confidence definition that in Commands rows `confirmed` covers class, ID and direction only; D2 :205 "the
+02D0 config was not read" → module 5315 config read for the matrix, sets no usagePage, claimInterface:3
+(@235284), which of the three 720 configs loads not traced; D3 matrix: add Profile reset (0x05:0x0b) and N-key
+rollover rows (unknown) or state the row-selection rule; Mod-Tap row notes modTap false; D4 add Synapse cites
+for 0x02:0xaa (@1047928/@1047971), 0x00:0xdb (@426433), 0x00:0xda (@425913), 0x00:0x5a (@425942); R1 one
+[HYPOTHESIS] sentence on what turns unknown into yes/no; R2 add openrgb#4418:2277952715 to lighting matrix rows;
+R3 Game Mode key lock = no vs Gaming Mode LED = yes clause; R4 (optional) native control-transfer framing
+(class SET/GET_REPORT, wValue 0x0300, wIndex 3, 90-byte data, no report-ID byte; untested). Refresh
+protocol-sources.md (zexrox row "not yet read"; add Chromium BSD, HUT, owner dump/probe rows).
+M11 write-back: ONE combined INDEX row for knowledge/protocol.md + hid-02a7-macos.txt + webusb-probe-02a7-macos.txt
+(INDEX ~3.7 KB of 4 KB); state.md Now/Next (mention protocol.md — the gate greps it; lighting: WebHID in Chrome,
+native inside Tauri per ADR-003), Open questions (can a native app claim if3), Pending hardware checks (G1 over
+native if3; LampArray report-1 read); ADRs: request-cycle recommendation, diagnostics allowlist incl. serial
+handling; brief.md correction (20 unit tests / 3 e2e; zexrox CI step). PR body: the "owner may veto" assumptions,
+and that matrix verdicts are not machine-checked. Lesson: scripts/check-context-bulk.sh is a claude-starter
+file — a starter sync could revert ADR-004's exception. -->
 
 ## M12: Merge and confirm the master build [pending]
 - verify: `bash -c 'test "$(gh pr view task/protocol-reference --json state -q .state)" = MERGED && M=$(gh pr view task/protocol-reference --json mergeCommit -q .mergeCommit.oid) && test "$(gh run list --workflow pages.yml --commit "$M" --json conclusion -q ".[0].conclusion")" = success'`

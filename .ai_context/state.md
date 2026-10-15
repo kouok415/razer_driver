@@ -13,7 +13,7 @@ packets G1–G3, a 24-row feature matrix (Snap Tap and the Gaming Mode LED
 yes, six README features no, the rest unknown). `npm run verify` checks it
 against `tools/citations.lock.json`; CI also resolves the zexrox citations
 at the pinned commit. Nothing has been sent to the keyboard. ADR-005/006
-merged with the owner's M11 sign-off; decisions.md still says "Proposed".
+accepted by the owner (ADR-007).
 
 Transport (ADR-003): no browser path reaches the interface-3 control
 channel, so the follow-up is a Tauri desktop app. Lighting: Chrome's WebHID

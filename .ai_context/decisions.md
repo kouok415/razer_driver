@@ -194,3 +194,18 @@ new entry that references and supersedes the old one.
   row and editing that line; the checker rejects a listed pair that is not
   a Safe=yes row (`tools/check-protocol-doc.mjs`). That Safe=yes rows are
   confirmed reads is the doc's rule, not machine-checked.
+
+## ADR-007: ADR-005 and ADR-006 accepted
+
+- **Date:** 2026-10-15
+- **Status:** Accepted (owner, 2026-10-15)
+- **Context:** ADR-005 (write each request once, re-read only) and ADR-006
+  (read-only diagnostics allowlist, serial kept local) were appended as
+  Proposed and merged with PR #3 after the owner's M11 sign-off.
+  decisions.md is append-only, so their Status lines cannot be edited.
+- **Decision:** Both are accepted as written; the Tauri follow-up task
+  implements them.
+- **Alternatives considered:** keeping them Proposed until the first
+  hardware contact.
+- **Consequences:** Their [HYPOTHESIS] parts (status 0x00 as pending; a
+  native claim of interface 3) remain hypotheses until hardware confirms.

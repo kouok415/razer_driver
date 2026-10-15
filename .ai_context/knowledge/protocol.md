@@ -343,6 +343,72 @@ read that a read-only diagnostics probe may send; every write is `no`.
 [HYPOTHESIS] Such a read changes no device state; the evidence is that zexrox
 passes these reads to the real keyboard whenever Synapse asks.
 
+Class 0x02 rows (groups actuation, rapid-trigger and snap-tap) are graded on
+class, ID and direction only. zexrox lists the reads it checks with a name and
+a size (zexrox:native/host.py:29-69@840f03dc), but says it copied those names and sizes
+from a 0.1.4 package (zexrox:native/host.py:25@840f03dc; see also
+zexrox:native/host.py:18@840f03dc); they match Synapse's declarations and
+[HYPOTHESIS] derive from Synapse, so they are not counted as a second source.
+A read is confirmed because zexrox's bridge sends that class and ID, as a read,
+to a real 02A7; its name and size stay likely (Synapse) unless a 0498 capture
+or zexrox's 0498 rewrite backs them, and a set that only Synapse declares is
+likely. Neither grade says the 0498 firmware implements the command: apart
+from 0x02:0xa7 and 0x02:0x27, which it rewrites (see Snap Tap on the 0498),
+zexrox passes these reports from the page to a real 02A7 unchanged
+(zexrox:native/host.py:526-532@840f03dc), which shows only that Synapse sends them.
+
+The Size column is the size in Synapse's triple, except for 0x02:0x99,
+0x02:0x19, 0x02:0x9a and 0x02:0x1a. Synapse's sendCommand takes a size
+argument (synapse:c1e6a425@435520#sendCommand) and passes it to the request builder
+(synapse:c1e6a425@436674#_createDataSend), which writes it over byte 5 when it
+is positive (synapse:c1e6a425@431246#n). For those four commands Synapse passes a
+size computed from the number of keys, so the column gives that formula and
+the Notes give the declared 80. The callers sit in Synapse module 43086 and
+name the four triples through Synapse's command table
+(synapse:c1e6a425@1042994#oc3, synapse:c1e6a425@1042817#iPi,
+synapse:c1e6a425@1042572#_r0, synapse:c1e6a425@1042432#UmA); the device
+module whose class is named rzDevice25 imports that module
+(synapse:c1e6a425@401913#43086) and calls it
+(synapse:c1e6a425@429920#rzDevice25, synapse:c1e6a425@474834#fr); which
+device module Synapse uses for the 02D0 or the 02A7 is not traced. Each class 0x02 row's Notes give a firmware verdict
+instead: unsupported where the zexrox README says the 0498 firmware lacks the
+feature (zexrox:README.md:25@840f03dc), supported where zexrox has evidence
+specific to the 0498, unknown otherwise. [HYPOTHESIS] The README names
+features, not commands; this document pairs them by name. For these rows
+Synapse declares each set triple right after its get triple and each set name
+right after its get name (for example synapse:c1e6a425@1045308#153,
+synapse:c1e6a425@1045337#25, synapse:c1e6a425@1045366#Actuation,
+synapse:c1e6a425@1045408#Actuation); [HYPOTHESIS] a set's name is paired with
+its triple by that order. Every actuation and rapid-trigger row drops the word
+Analog from Synapse's name: it follows Multi in the four Multi Key names and
+comes right after Get or Set in the others; the cited strings hold the full
+names.
+
+Snap Tap on the 0498. Synapse's Get and Set Snap Tap Ctrl are 0x02:0xa7 and
+0x02:0x27 with 15 data bytes (synapse:c1e6a425@1047421#15,
+synapse:c1e6a425@1047426#167, synapse:c1e6a425@1047456#39). zexrox reads them
+as the profile, the number of key pairs, an enabled flag, then two key ids and
+a mode byte (zexrox:native/host.py:174-176@840f03dc). Naming a capture file
+(snaptap.pcapng) that is not in the zexrox repo, zexrox says the 0498 does
+Snap Tap with a 4-byte command instead: 0x02:0xa1 to get and 0x02:0x21 to set, holding the profile, an
+enabled flag and two key ids (zexrox:native/host.py:172-174@840f03dc).
+Synapse declares the same class, IDs and size as Get and Set Keyboard Kill
+Switch Ctrl (synapse:c1e6a425@1046779#4, synapse:c1e6a425@1046783#161,
+synapse:c1e6a425@1046813#33, synapse:c1e6a425@1046835#Kill). So zexrox never
+sends 0x02:0xa7 or 0x02:0x27 to the keyboard. It builds a new request with
+size 4, ID 0xa1 for the get or 0x21 for the set, and the page's transaction
+byte and profile; for a set it adds the enabled flag and, when the page sent
+at least one pair, that first pair's two key ids. The mode byte and any
+further pairs are dropped and the checksum is recomputed
+(zexrox:native/host.py:178-194@840f03dc). The reply is rebuilt into the shape
+the page expects: the keyboard's status byte; the page's transaction byte and
+command bytes; a size of the page's own when 6 to 80, else 15; then profile, a
+pair count of 1 when either key id is non-zero (else 0), enabled, the two key
+ids, and mode 0, which zexrox notes is the page's last-input priority
+(zexrox:native/host.py:196-214@840f03dc). [HYPOTHESIS] A port for the 0498
+should send 0x02:0xa1 and 0x02:0x21 itself and offer one key pair with no
+priority choice.
+
 | Group | Class | ID | Name | Dir | Size | Safe | Confidence | Source | Notes |
 |---|---|---|---|---|---|---|---|---|---|
 | device-info | 0x00 | 0x81 | Get Firmware Version | read | 2 | yes | confirmed | synapse:c1e6a425@280681#129; synapse:c1e6a425@280694#Firmware; synapse:c1e6a425@279884#K_; synapse:c1e6a425@1093638#K_; zexrox:native/host.py:22@840f03dc | Confirmed (both sources): class, ID, read. Likely (Synapse only): name, size 2, reply layout (see Reply layouts); zexrox does not check this size. No arguments. |
@@ -351,6 +417,25 @@ passes these reads to the real keyboard whenever Synapse asks.
 | device-info | 0x00 | 0x86 | Get Edition Information | read | 3 | no | confirmed | synapse:c1e6a425@281121#134; synapse:c1e6a425@281159#Edition; synapse:c1e6a425@1094540#dx; zexrox:native/host.py:22@840f03dc | Confirmed (both sources): class, ID, read. Likely (Synapse only): size 3. Likely (Synapse only): the name, paired with the triple where Synapse sends it (synapse:c1e6a425@1094540#dx). Reply layout not traced. Not on the diagnostics list in this version. |
 | device-info | 0x00 | 0x87 | Get Extended Firmware Version | read | 4 | no | confirmed | synapse:c1e6a425@281203#135; synapse:c1e6a425@281225#Firmware; synapse:c1e6a425@1097158#O3; zexrox:native/host.py:22@840f03dc | Confirmed (both sources): class, ID, read. Likely (Synapse only): size 4. Likely (Synapse only): the name, paired with the triple where Synapse sends it (synapse:c1e6a425@1097158#O3). Reply layout not traced. Not on the diagnostics list in this version. |
 | device-info | 0x00 | 0x02 | Set Serial Number | write | 22 | no | likely | synapse:c1e6a425@280759#22; synapse:c1e6a425@280797#Serial; synapse:c1e6a425@279741#AQ; synapse:c1e6a425@279828#I0; synapse:c1e6a425@1094070#AQ | Synapse only; zexrox does not list it. Overwrites the serial: never send. Same class and size as 0x00:0x82; the ID differs only in bit 7 (see below). |
+| actuation | 0x02 | 0x99 | Get Multi Key Actuation Point | read | 2+5×keys | no | confirmed | synapse:c1e6a425@1045308#153; synapse:c1e6a425@1045303#80; synapse:c1e6a425@1045366#Actuation; zexrox:native/host.py:46@840f03dc#0x99 | Confirmed: class, ID, read. Likely (Synapse; zexrox's list copies it): name. Size: Synapse declares 80 but sends 2+5×keys for up to 15 keys (likely, Synapse only: synapse:c1e6a425@1259668#2); zexrox notes Synapse sends this read at more than one size and exempts it from its size check (zexrox:native/host.py:121-124@840f03dc). Reply layout not traced. Not on the diagnostics list in this version. 0498 firmware: unknown (zexrox only lists and forwards it). |
+| actuation | 0x02 | 0x19 | Set Multi Key Actuation Point | write | 2+5×keys | no | likely | synapse:c1e6a425@1045337#25; synapse:c1e6a425@1045332#80; synapse:c1e6a425@1045408#Actuation | Synapse only (likely): set ID; name paired by declaration order [HYPOTHESIS]. Size: Synapse declares 80 but sends 2+5×keys for up to 15 keys (likely, Synapse only: synapse:c1e6a425@1260228#2); zexrox checks sizes only for the reads it lists, so it never checks this set's size (zexrox:native/host.py:119-124@840f03dc). Argument layout not traced. 0498 firmware: unknown. |
+| actuation | 0x02 | 0x9f | Get Key Adjustment Mode Ctrl | read | 2 | no | confirmed | synapse:c1e6a425@1045924#159; synapse:c1e6a425@1045920#2; synapse:c1e6a425@1045977#Adjustment; zexrox:native/host.py:50@840f03dc#0x9f | Confirmed: class, ID, read. Likely (Synapse; zexrox's list copies it): size 2, name. Reply layout not traced. Not on the diagnostics list in this version. 0498 firmware: unknown (zexrox only lists and forwards it). |
+| actuation | 0x02 | 0x1f | Set Key Adjustment Mode Ctrl | write | 2 | no | likely | synapse:c1e6a425@1045953#31; synapse:c1e6a425@1045949#2; synapse:c1e6a425@1046018#Adjustment | Synapse only (likely): set ID, size 2; name paired by declaration order [HYPOTHESIS]. Argument layout not traced. 0498 firmware: unknown. |
+| actuation | 0x02 | 0xaf | Get V3 Key Adjustment Mode Ctrl | read | 1 | no | confirmed | synapse:c1e6a425@1046063#175; synapse:c1e6a425@1046059#1; synapse:c1e6a425@1046091#Adjustment; zexrox:native/host.py:58@840f03dc#0xaf; zexrox:README.md:25@840f03dc#V3 | Confirmed: class, ID, read. Likely (Synapse; zexrox's list copies it): size 1, name. Synapse declares no matching set. Reply layout not traced. Not on the diagnostics list in this version. 0498 firmware: unsupported (the zexrox README says it lacks Analog V3; feature-to-command pairing by name is [HYPOTHESIS]). |
+| actuation | 0x02 | 0xa8 | Get Key Bottom Dead-Zone Value | read | 2 | no | confirmed | synapse:c1e6a425@1047657#168; synapse:c1e6a425@1047653#2; synapse:c1e6a425@1047710#Bottom; zexrox:native/host.py:65@840f03dc#0xa8; zexrox:README.md:25@840f03dc#deadzone; synapse:c1e6a425@1048306#168; synapse:c1e6a425@1048302#1; synapse:c1e6a425@1048347#Function | Confirmed: class, ID, read. Likely (Synapse; zexrox's list copies it): size 2, name. Synapse also declares 0x02:0xa8 with size 1 next to the Function Key Swap names; the two triples differ only in the size byte, and which one the 0498 answers is unknown. Reply layout not traced. Not on the diagnostics list in this version. 0498 firmware: unsupported (the zexrox README says it lacks bottom deadzone; pairing by name is [HYPOTHESIS]). |
+| actuation | 0x02 | 0x28 | Set Key Bottom Dead-Zone Value | write | 2 | no | likely | synapse:c1e6a425@1047686#40; synapse:c1e6a425@1047682#2; synapse:c1e6a425@1047753#Bottom; zexrox:README.md:25@840f03dc#deadzone; synapse:c1e6a425@1048278#40; synapse:c1e6a425@1048274#1; synapse:c1e6a425@1048320#Function | Synapse only (likely): set ID, size 2; name paired by declaration order [HYPOTHESIS]. Argument layout not traced. Synapse also declares 0x02:0x28 with size 1 next to the Function Key Swap names. 0498 firmware: unsupported (README: bottom deadzone; pairing by name is [HYPOTHESIS]). |
+| rapid-trigger | 0x02 | 0x9a | Get Multi Key Rapid Trigger | read | 2+6×keys | no | confirmed | synapse:c1e6a425@1045449#154; synapse:c1e6a425@1045444#80; synapse:c1e6a425@1045509#Rapid; zexrox:native/host.py:47@840f03dc#0x9a | Confirmed: class, ID, read. Likely (Synapse; zexrox's list copies it): name. Size: Synapse declares 80 but sends 2+6×keys for up to 13 keys (likely, Synapse only: synapse:c1e6a425@1261032#2); zexrox notes Synapse sends this read at more than one size and exempts it from its size check (zexrox:native/host.py:121-124@840f03dc). Reply layout not traced. Not on the diagnostics list in this version. 0498 firmware: unknown (zexrox only lists and forwards it). |
+| rapid-trigger | 0x02 | 0x1a | Set Multi Key Rapid Trigger | write | 2+6×keys | no | likely | synapse:c1e6a425@1045479#26; synapse:c1e6a425@1045474#80; synapse:c1e6a425@1045549#Rapid | Synapse only (likely): set ID; name paired by declaration order [HYPOTHESIS]. Size: Synapse declares 80 but sends 2+6×keys for up to 13 keys (likely, Synapse only: synapse:c1e6a425@1261575#2); zexrox checks sizes only for the reads it lists, so it never checks this set's size (zexrox:native/host.py:119-124@840f03dc). Argument layout not traced. 0498 firmware: unknown. |
+| rapid-trigger | 0x02 | 0xa0 | Get Key Continuous Rapid Trigger | read | 2 | no | confirmed | synapse:c1e6a425@1046136#160; synapse:c1e6a425@1046132#2; synapse:c1e6a425@1046189#Continuous; zexrox:native/host.py:66@840f03dc#0xa0 | Confirmed: class, ID, read. Likely (Synapse; zexrox's list copies it): size 2, name. Reply layout not traced. Not on the diagnostics list in this version. 0498 firmware: unknown (zexrox only lists and forwards it). |
+| rapid-trigger | 0x02 | 0x20 | Set Key Continuous Rapid Trigger | write | 2 | no | likely | synapse:c1e6a425@1046165#32; synapse:c1e6a425@1046161#2; synapse:c1e6a425@1046234#Continuous | Synapse only (likely): set ID, size 2; name paired by declaration order [HYPOTHESIS]. Argument layout not traced. 0498 firmware: unknown. |
+| snap-tap | 0x02 | 0xa7 | Get Snap Tap Ctrl | read | 15 | no | likely | synapse:c1e6a425@1047426#167; synapse:c1e6a425@1047421#15; synapse:c1e6a425@1047469#Snap; zexrox:native/host.py:61@840f03dc#0xa7; zexrox:native/host.py:174-176@840f03dc; zexrox:native/host.py:178-185@840f03dc#0xa1 | Likely (Synapse; zexrox matches it in the page's traffic but never sends it to a 02A7): class, ID, read, size 15, name; this is what Synapse sends. Reply layout not traced in Synapse. 0498 firmware: unknown; zexrox never sends it to the keyboard and rewrites it to 0x02:0xa1 (see Snap Tap on the 0498). Not on the diagnostics list in this version. |
+| snap-tap | 0x02 | 0x27 | Set Snap Tap Ctrl | write | 15 | no | likely | synapse:c1e6a425@1047456#39; synapse:c1e6a425@1047451#15; synapse:c1e6a425@1047492#Snap; zexrox:native/host.py:174-176@840f03dc; zexrox:native/host.py:178-185@840f03dc#0x27 | Likely (Synapse; zexrox names 0x27 as the page's set but never sends it to a 02A7): class, ID, set, size 15, name; zexrox's size 15 describes the page's command, not the 0498 (zexrox:native/host.py:175@840f03dc). Likely (zexrox only): argument layout (see Reply layouts). 0498 firmware: unknown; zexrox rewrites it to 0x02:0x21. |
+| snap-tap | 0x02 | 0xa1 | Get Keyboard Kill Switch Ctrl | read | 4 | no | confirmed | synapse:c1e6a425@1046783#161; synapse:c1e6a425@1046779#4; synapse:c1e6a425@1046835#Kill; zexrox:native/host.py:172-173@840f03dc; zexrox:native/host.py:183-185@840f03dc#0xa1 | Confirmed: class, ID, read, size 4 (Synapse's triple and zexrox's 0498 rewrite). Likely (Synapse): the name Keyboard Kill Switch Ctrl; zexrox calls it a kill-switch command. Likely (zexrox only): reply layout (see Reply layouts). 0498 firmware: supported; zexrox sends it to a real 02A7 in place of 0x02:0xa7 and names a capture file (snaptap.pcapng) that is not in the zexrox repo. Not on the diagnostics list in this version. |
+| snap-tap | 0x02 | 0x21 | Set Keyboard Kill Switch Ctrl | write | 4 | no | confirmed | synapse:c1e6a425@1046813#33; synapse:c1e6a425@1046809#4; synapse:c1e6a425@1046870#Kill; zexrox:native/host.py:172-173@840f03dc; zexrox:native/host.py:185@840f03dc#0x21 | Confirmed: class, ID, set, size 4 (Synapse's triple and zexrox's 0498 rewrite). Likely (Synapse): name. Likely (zexrox only): argument layout (see Reply layouts). 0498 firmware: supported (zexrox's Snap Tap set on a real 02A7; it names a capture file, snaptap.pcapng, that is not in the zexrox repo). |
+| snap-tap | 0x02 | 0xac | Get Single-key Snap Tap Ctrl | read | 11 | no | confirmed | synapse:c1e6a425@1047531#172; synapse:c1e6a425@1047526#11; synapse:c1e6a425@1047574#Single; zexrox:native/host.py:60@840f03dc#0xac; zexrox:README.md:25@840f03dc#Snap | Confirmed: class, ID, read. Likely (Synapse; zexrox's list copies it): size 11, name. Reply layout not traced. Not on the diagnostics list in this version. 0498 firmware: unsupported (the zexrox README says it lacks single-key Snap Tap; pairing by name is [HYPOTHESIS]). |
+| snap-tap | 0x02 | 0x2c | Set Single-key Snap Tap Ctrl | write | 11 | no | likely | synapse:c1e6a425@1047561#44; synapse:c1e6a425@1047556#11; synapse:c1e6a425@1047608#Single; zexrox:README.md:25@840f03dc#Snap | Synapse only (likely): set ID, size 11; name paired by declaration order [HYPOTHESIS]. Argument layout not traced. 0498 firmware: unsupported (README: single-key Snap Tap; pairing by name is [HYPOTHESIS]). |
+| snap-tap | 0x02 | 0xb1 | Get Dual Keypress Priority | read | 7 | no | confirmed | synapse:c1e6a425@1048389#177; synapse:c1e6a425@1048385#7; synapse:c1e6a425@1048431#Dual; zexrox:native/host.py:62@840f03dc#0xb1 | Confirmed: class, ID, read. Likely (Synapse; zexrox's list copies it): size 7, name. Reply layout not traced. Not on the diagnostics list in this version. 0498 firmware: unknown (zexrox only lists and forwards it). [HYPOTHESIS] Grouped with Snap Tap by this document. |
+| snap-tap | 0x02 | 0x31 | Set Dual Keypress Priority | write | 7 | no | likely | synapse:c1e6a425@1048418#49; synapse:c1e6a425@1048414#7; synapse:c1e6a425@1048463#Dual | Synapse only (likely): set ID, size 7; name paired by declaration order [HYPOTHESIS]. Argument layout not traced. 0498 firmware: unknown. [HYPOTHESIS] Grouped with Snap Tap by this document. |
 
 Set Serial Number (0x00:0x02) and Get Serial Number (0x00:0x82) share class
 and size and differ in one bit of byte 7, so one flipped bit turns the safe
@@ -374,6 +459,9 @@ below is byte 8 + n of the reply.
 | 0x00:0x81 Get Firmware Version | data[1] | Minor version number. Synapse reads nothing past data[1] and does not look at the status before decoding. | synapse:c1e6a425@1093666#major |
 | 0x00:0x82 Get Serial Number | data[0] up to the reply's byte 5 | Serial number bytes. Synapse keeps every byte and also derives a text form from only the bytes in 0x20 to 0x7e, skipping the rest (so 0x00 padding drops out). | synapse:c1e6a425@1093813#serialNumberAscii; synapse:c1e6a425@1093742#32; synapse:c1e6a425@1093877#Kr |
 | 0x00:0x02 Set Serial Number | request data[0] to data[21] | The new serial, exactly 22 bytes; Synapse refuses any other length before sending. It decodes the reply like 0x00:0x82. | synapse:c1e6a425@1094070#AQ; synapse:c1e6a425@1094147#commandClass |
+| 0x02:0xa1 Get Keyboard Kill Switch Ctrl | data[0] to data[3] | Profile, enabled flag, first key id, second key id, as zexrox reads the keyboard's reply. One source (zexrox): likely. | zexrox:native/host.py:205@840f03dc#firmware |
+| 0x02:0x21 Set Keyboard Kill Switch Ctrl | request data[0] to data[3] | Profile, enabled flag (0 and 1 in zexrox's capture), first key id, second key id. One source (zexrox): likely. | zexrox:native/host.py:172-174@840f03dc; zexrox:native/host.py:186-192@840f03dc |
+| 0x02:0x27 Set Snap Tap Ctrl | request data[0] to data[5] | Profile, number of pairs, enabled flag, key id, key id, mode. [HYPOTHESIS] The last three repeat for each further pair. One source (zexrox): likely. | zexrox:native/host.py:174-176@840f03dc; zexrox:native/host.py:188-192@840f03dc |
 
 ## Golden packets
 

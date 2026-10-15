@@ -174,7 +174,7 @@ access (Tauri desktop app via IOKit/libusb) — interface 3 has no driver bound,
 [HYPOTHESIS until tested]; (c) WebHID only for LampArray lighting (interface 4) and the inputs on
 interfaces 1/5. `02A7 status:` stays [UNVERIFIED] for the interface-3 channel on macOS. Run --write-lock. -->
 
-## M6: protocol.md — actuation, Rapid Trigger, Snap Tap commands [pending]
+## M6: protocol.md — actuation, Rapid Trigger, Snap Tap commands [done]
 - verify: `bash -c 'S=/tmp/claude-1000/-code-razer-driver/9f95b686-1bf0-4dae-a24a-b65ac47b4fc6/scratchpad/sources; node tools/check-protocol-doc.mjs --require=sources,framing,status,commands,golden,control --groups=device-info,actuation,rapid-trigger,snap-tap --sources=$S && grep -qE "^\| *snap-tap *\| *0x02 *\| *0xa1 *\|" .ai_context/knowledge/protocol.md'`
 - risk: med
 - demo: protocol.md documents actuation point, Rapid Trigger (incl. continuous) and Snap Tap commands with sources, including that the RZ03-0498 takes Snap Tap as 02:a1/02:21 where Synapse sends 02:a7/02:27.
@@ -189,9 +189,13 @@ writes Safe=no. Unsourced → `### Gaps` bullet, never invented. Run --write-loc
 (host.py:526-532) shows only that Synapse sends it to a real 02A7 — never that the 0498 firmware
 implements it. EXTRA_READS includes 02:af, 02:ac, 02:a8, 02:aa, 00:db (host.py:58/60/65/67/68), whose
 features README:25 says the 0498 lacks. Row confidence = class/ID/size agreement; firmware support
-goes in Notes: README:25 ⇒ unsupported; capture / 0498-specific rewrite ⇒ supported; else unknown. -->
+goes in Notes: README:25 ⇒ unsupported; capture / 0498-specific rewrite ⇒ supported; else unknown.
+2026-10-14 (drift N1): zexrox's lists are NOT independent of Synapse — host.py:18 "identified in the
+0.1.4 package", host.py:25 names and sizes copied. A command row's `confirmed` covers class, ID and
+direction only (zexrox's bridge sends that request to a real 02A7); name and size stay `likely` unless
+a 0498 capture or rewrite backs them; firmware support lives in Notes / the Feature matrix. -->
 
-## M7: protocol.md — lighting commands [pending]
+## M7: protocol.md — lighting commands [in_progress]
 - verify: `bash -c 'S=/tmp/claude-1000/-code-razer-driver/9f95b686-1bf0-4dae-a24a-b65ac47b4fc6/scratchpad/sources; node tools/check-protocol-doc.mjs --require=sources,framing,status,commands,golden,control,lamparray --groups=device-info,actuation,rapid-trigger,snap-tap,lighting --sources=$S && test "$(grep -cE "^\| *lighting *\|" .ai_context/knowledge/protocol.md)" -ge 4'`
 - risk: med
 - demo: protocol.md lists the Razer lighting commands (LED state, effects, brightness, per-key custom frame), each cited, and a LampArray section describing the keyboard's standard lighting interface (interface 4) report by report.
@@ -204,9 +208,21 @@ and name each field from the USB-IF HID Usage Tables, Lighting and Illumination 
 url:https://usb.org/... — fetch the HUT PDF/text into NEW dir $S/sources/hut/ and add to manifest if a
 stable URL exists). Include LampArrayAttributes (1), LampAttributesRequest (2) / Response (3),
 LampMultiUpdate (4), LampRangeUpdate (5), LampArrayControl/AutonomousMode (6). Run --write-lock.
+2026-10-14 (drift N1/AC2): OpenRGB 4418 is 0498-specific lighting evidence (02A7 added to OpenRGB's
+existing Razer controller, MR !2627; reporter found lighting working). If the commands that controller
+sends to 02A7 can be identified from OpenRGB source (GPL-2.0: facts only, pin a commit, manifest it),
+matching lighting rows may get a "supported" verdict; else they stay "unknown".
+2026-10-15 (orchestrator, BEFORE M7 starts): separate fix commit on ## Control interface — fold in the
+owner's probe run (knowledge/webusb-probe-02a7-macos.txt: 6a/6b/6c refused, 6d ok; if3 descriptor =
+0x0C/0x01 + one 90-B feature report; if3 has only an interrupt OUT endpoint; WebHID offers 4 devices),
+turning predictions into observations; plus drift-M5 N2 (tag :255), N5 (url-only Chromium history),
+N6 (openrgb note-id citations); add the probe file to the manifest/citation scheme if needed.
 2026-10-14 (M5): owner dump gives if4 feature sizes id1..6 = 22,2,28,50,9,1 B (max 51); WebHID treats
 page 0x59 as unprotected (chromium hid_report_utils.cc:45 @1aeca202, already in manifest) — reuse
-those citations rather than re-fetching. -->
+those citations rather than re-fetching. 
+2026-10-15 (M6 verifier): a Synapse triple's size is only the DECLARED size — sendCommand takes a size
+argument that overwrites byte 5 (@435514, @431246); check the callers before stating a size, and grade
+name/size per drift N1 (zexrox copies them). -->
 
 ## M8: protocol.md — keymap, Hypershift, macro commands [pending]
 - verify: `bash -c 'S=/tmp/claude-1000/-code-razer-driver/9f95b686-1bf0-4dae-a24a-b65ac47b4fc6/scratchpad/sources; node tools/check-protocol-doc.mjs --require=sources,framing,status,commands,golden,control --groups=device-info,actuation,rapid-trigger,snap-tap,lighting,keymap,hypershift,macro --sources=$S && grep -qE "^\| *macro *\| *0x06 *\|" .ai_context/knowledge/protocol.md'`
@@ -215,7 +231,13 @@ those citations rather than re-fetching. -->
 <!-- DOC-ONLY. Seeds: zexrox EXTRA_READS keymap 02:84, 02:8c-02:8f, 02:92, 02:9b, 02:9e, 02:b2, 02:b5-02:b7;
 macros 06:80, 06:88-06:8c, 06:8e. Hypershift: if Synapse encodes it as a layer argument of key
 assignment rather than its own command, write a `### Gaps` bullet (`- hypershift: ... — <citation>`)
-— never invent a command. Run --write-lock. -->
+— never invent a command. Run --write-lock.
+2026-10-14 (M6): Synapse declares 02:a8/02:28 twice — size 2 as Bottom Dead-Zone (@1047653) and size 1
+beside the "Function Key Swap" names (@1048274, @1048302); they differ only in byte 5. If a keymap
+feature uses that pair, say so and cross-reference the actuation rows; never assume one meaning. 
+2026-10-15 (M6 verifier): a Synapse triple's size is only the DECLARED size — sendCommand takes a size
+argument that overwrites byte 5 (@435514, @431246); check the callers before stating a size, and grade
+name/size per drift N1 (zexrox copies them). -->
 
 ## M9: protocol.md — profiles, polling rate, feature matrix [pending]
 - verify: `bash -c 'S=/tmp/claude-1000/-code-razer-driver/9f95b686-1bf0-4dae-a24a-b65ac47b4fc6/scratchpad/sources; node tools/check-protocol-doc.mjs --require=all --groups=all --sources=$S && grep -q "zexrox:README.md:25@840f03dc" .ai_context/knowledge/protocol.md'`
@@ -235,7 +257,29 @@ README:25.
 is NOT "yes" evidence. "yes" needs command-specific 0498 evidence (a capture such as the snaptap one
 behind host.py:169-180, a 0498-specific rewrite, or zexrox README saying the feature works); README:25
 ⇒ "no"; otherwise "unknown". Polling: also Synapse [1,0,133] Get Device Polling Period (00:85,
-@280600 region), not only 00:c0. -->
+@280600 region), not only 00:c0.
+2026-10-14 (M6): anchors for the matrix — Synapse's 02D0 device config enables snapTap, bottomDeadZone,
+singleKeySnapTap, dualKeypressPriority, analogKeyboardV3, tournamentMode (@235844-235945; read the
+window to its end before citing). Correction (M6 repair, 2026-10-15): the class named "rzDevice25"
+(@429920) is transport module 17937 (the framing module); per-key actuation/RT callers are module
+43086, imported by 17937. @136159 is module 1207 (@34026), a different device module with another
+sendCommand signature — which device module product 720 uses is not traced; trace it (module 44025
+imports both 17937 and 1207) before citing 1207's Snap Tap code. The M6 rows
+already carry per-command 0498 verdicts (supported / unsupported / unknown) — reuse them. 
+2026-10-15 (M6 verifier): a Synapse triple's size is only the DECLARED size — sendCommand takes a size
+argument that overwrites byte 5 (@435514, @431246); check the callers before stating a size, and grade
+name/size per drift N1 (zexrox copies them). -->
+
+## M10a: Checker pins the Chromium and OpenRGB sources by hash [pending]
+- verify: `bash -c 'S=/tmp/claude-1000/-code-razer-driver/9f95b686-1bf0-4dae-a24a-b65ac47b4fc6/scratchpad/sources; node --test tools/ >/dev/null || exit 1; T=$(mktemp -d); cp -r "$S/." "$T/"; printf x >> "$T/chromium/services/device/hid/hid_connection.cc"; node tools/check-protocol-doc.mjs --require=none --sources="$T" >/dev/null 2>&1; test $? -eq 2 || exit 1; U=$(mktemp -d); cp -r "$S/." "$U/"; printf x >> "$U/openrgb-4418/issue.json"; node tools/check-protocol-doc.mjs --require=none --sources="$U" >/dev/null 2>&1; test $? -eq 2 || exit 1; Z=$(mktemp -d); mkdir "$Z/zexrox"; cp -r "$S/zexrox/." "$Z/zexrox/"; node tools/check-protocol-doc.mjs --require=none --sources="$Z" --only=zexrox && node tools/check-protocol-doc.mjs --require=all --groups=all --sources="$S"'`
+- risk: med
+- demo: altering any saved Chromium or OpenRGB source file now makes the checker reject the sources directory (exit 2), as it already does for zexrox and Synapse; a zexrox-only directory (the CI mode) still passes.
+<!-- From drift check after M5 (N4, earlier D5): verifySources (check-protocol-doc.mjs ~L794-823)
+hash-checks only zexrox and synapse; a tampered chromium file is not noticed and an openrgb edit fails
+only via the lock (exit 1). Add manifest checks: chromium = commit id field + sha256 of every listed
+file; openrgb-4418 = sha256 of issue.json and discussions.json. Respect the --only kinds filter so the
+CI zexrox-only mode keeps working. One test per source kind in tools/check-protocol-doc-sources.test.mjs
+using fake trees (no scratchpad paths, no env). Do not change rule checks or the lock format. -->
 
 ## M10: Wire the protocol check into verify and CI [pending]
 - verify: `bash -c 'S=/tmp/claude-1000/-code-razer-driver/9f95b686-1bf0-4dae-a24a-b65ac47b4fc6/scratchpad/sources; T=$(mktemp -d) && mkdir $T/zexrox && cp -r $S/zexrox/. $T/zexrox/ && node tools/check-protocol-doc.mjs --sources=$T --only=zexrox && grep -q "\"check:protocol\"" package.json && grep -q "only=zexrox" .github/workflows/pages.yml && grep -q "840f03dca68c7f7a3b8f867475a2c8e9a355a1bc" .github/workflows/pages.yml && npm run verify'`
@@ -252,10 +296,10 @@ check:protocol run `--require=all --groups=all` so verify/CI also enforce group 
 device-info firmware/serial rule.
 2026-10-14 (drift D5): verifySources (check-protocol-doc.mjs ~L795-823) hash-checks only zexrox and
 synapse; chromium @<commit> is parsed but never compared and an openrgb note ID resolves if it
-appears anywhere in the folder. Extend it to check the chromium/openrgb-4418 manifest sha256 + the
-chromium commit, with a test per source kind. (D8): branch base is 39eb1db but origin/master is
+appears anywhere in the folder — moved to M10a. (D8): branch base is 39eb1db but origin/master is
 5a65950 (probe page); `git merge origin/master` (no force, merge-tree was clean) before npm run
-verify so CI runs the tree verified locally. -->
+verify so CI runs the tree verified locally. Merge first, then edit package.json (origin/master
+changes one line of it). -->
 
 ## M11: State write-back, PR with green CI — owner approves the merge [pending]
 - verify: `bash -c 'npm run verify && ! git ls-files | grep -qE "(^|/)(host\.py|virtual-hid\.js|main\.[0-9a-f]{8}\.js)$" && grep -q "protocol.md" .ai_context/state.md && test "$(gh pr view task/protocol-reference --json headRefOid -q .headRefOid)" = "$(git rev-parse HEAD)" && timeout 420 gh pr checks task/protocol-reference --watch --fail-fast'`
@@ -270,7 +314,9 @@ INDEX.md: add a row for knowledge/protocol.md and knowledge/hid-02a7-macos.txt. 
 2026-10-14 (drift D9): state.md Next steps 2 still says "WebHID connect to interface 3 … fake
 navigator.hid" — rewrite it from the rescope. CLAUDE.md DoD needs ADRs: append to decisions.md the
 rescope (WebHID cannot reach if3 on macOS; ADR-001's WebHID premise is superseded for the control
-channel), the request-cycle recommendation, and the diagnostics allowlist. -->
+channel), the request-cycle recommendation, and the diagnostics allowlist.
+2026-10-15: ADR-003 (Tauri desktop app, owner-accepted) already records the rescope/transport; still
+owed: request-cycle and diagnostics-allowlist ADRs. -->
 
 ## M12: Merge and confirm the master build [pending]
 - verify: `bash -c 'test "$(gh pr view task/protocol-reference --json state -q .state)" = MERGED && M=$(gh pr view task/protocol-reference --json mergeCommit -q .mergeCommit.oid) && test "$(gh run list --workflow pages.yml --commit "$M" --json conclusion -q ".[0].conclusion")" = success'`

@@ -90,3 +90,15 @@ after the owner runs a read-only WebUSB probe.)
   unknown); "WebHID only sees collections the OS HID stack exposes" and the
   first-milestone inferences from chromiumdash branch positions are
   [HYPOTHESIS].]
+- [ASSUMED: (drift N1) zexrox's command lists derive from Synapse
+  (host.py:18, :25), so they are not an independent source for names or
+  sizes. In command rows `confirmed` covers class, ID and direction only,
+  on the ground that zexrox's bridge sends that request to a real 02A7;
+  name and size stay `likely` unless a 0498 capture or rewrite backs them;
+  firmware support is stated in Notes and the Feature matrix — owner may
+  prefer `likely` for all such rows.]
+- [ASSUMED: (M6) the Size column of 0x02:0x99/0x19/0x9a/0x1a gives the
+  size Synapse sends (2+5×keys, 2+6×keys), with the declared 80 in Notes;
+  Synapse names with "Analog" are shortened by dropping that word (rule
+  stated in the doc); the placement of 0x02:0xb1/0x31 under snap-tap and
+  of 0x9f/0xaf/0xa8/0x28 under actuation is this doc's choice.]

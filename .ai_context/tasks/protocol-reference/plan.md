@@ -362,7 +362,7 @@ is FALSE (verifier + orchestrator regex: no "usage" within 600 chars of @1211158
 name only in getTournamentMode's send ~@514041) — find names via the method that sends the triple; copy.py
 diffs whole changed lines, so editing one cell of an old row re-checks the row's old text. -->
 
-## M12: Merge and confirm the master build [in_progress]
+## M12: Merge and confirm the master build [done]
 - verify: `bash -c 'test "$(gh pr view task/protocol-reference --json state -q .state)" = MERGED && M=$(gh pr view task/protocol-reference --json mergeCommit -q .mergeCommit.oid) && test "$(gh run list --workflow pages.yml --commit "$M" --json conclusion -q ".[0].conclusion")" = success'`
 - risk: low
 - demo: the PR is merged and the master workflow (verify incl. the protocol check, then Pages deploy) is green on the merge commit.

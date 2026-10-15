@@ -11,7 +11,7 @@ library); access-layer details are called out where they matter.
 Synapse targets 02D0 (superset); zexrox runs against a real 0498.
 
 - Synapse Web is Razer's own web configurator. The bundle cited here is the one
-  it serves for the Huntsman V3 Pro 8KHz TKL (product 720 = PID 0x02D0), a
+  it serves for the Huntsman V3 Pro 8KHz TKL (product 720 in its path; 720 is 0x02D0 in decimal), a
   superset of this keyboard. It is the fullest description of the protocol, but
   nothing in it is proven for 02A7.
 - zexrox/huntsman-synapse-web is a bridge that opens a real 1532:02A7 on USB
@@ -39,8 +39,8 @@ commit, or OpenRGB); `[HYPOTHESIS]` = this document's inference or choice.
 
 Every request and every reply is one HID feature report with report ID 0 and
 90 data bytes. The host writes the request with SET_REPORT and fetches the
-reply with GET_REPORT on the same report; there is no interrupt endpoint and
-no open handshake in this exchange (Synapse's WebHID connect step only opens
+reply with GET_REPORT on the same report; the exchange uses no interrupt
+endpoint and no open handshake (Synapse's WebHID connect step only opens
 the device: synapse:c1e6a425@431365#connectDevice). zexrox accepts nothing but
 report ID 0 (zexrox:native/host.py:502-503@840f03dc).
 
@@ -53,7 +53,8 @@ separate argument when sending (synapse:c1e6a425@438784#sendFeatureReport);
 when a received report arrives as 91 bytes, Synapse drops its first byte
 (synapse:c1e6a425@433224#91). Synapse builds its byte view from the returned
 DataView's whole underlying buffer and ignores the view's byte offset
-(synapse:c1e6a425@433211#e.buffer); a port should respect the offset.
+(synapse:c1e6a425@433211#e.buffer). [HYPOTHESIS] A port should respect the
+offset.
 
 The checksum and the transaction byte are described in the table and in
 Transaction and status. Byte numbers are 0-based within the 90 data bytes.
@@ -114,8 +115,8 @@ Byte 1 of a request; the device repeats it in byte 1 of the reply.
   writing (zexrox:native/host.py:426@840f03dc).
 - Whether the firmware limits the range is not established: zexrox's own
   LED write uses a separate counter that cycles 1 to 255
-  (zexrox:native/host.py:442@840f03dc). This repo follows Synapse's 0 to 30
-  sequence, starting at 0.
+  (zexrox:native/host.py:442@840f03dc). [HYPOTHESIS] This repo follows
+  Synapse's 0 to 30 sequence, starting at 0 (a repo choice).
 
 ### Request cycle
 
@@ -156,15 +157,17 @@ What the sources do:
   zexrox's wait loop the same bytes
   (zexrox:native/host.py:426-436@840f03dc).
 
-Decision for this repo (the follow-up transport task implements it): send
-once, re-read only, never resend.
+Recommendation for this repo, [HYPOTHESIS] as a whole: a repo choice recorded
+in the task spec's assumptions and pending the owner's review; the follow-up
+transport task implements it. Send once, re-read only, never resend.
 
 1. Build the request (byte 0 = 0x00, next transaction ID, size, class, ID,
    arguments, checksum) and write it once with SET_REPORT, report ID 0.
 2. Every 20 ms, re-read with GET_REPORT for at most 0.5 s in total; these two
    numbers come from zexrox, the only source run against a real 02A7
    (zexrox:native/host.py:222-223@840f03dc#BUSY_POLL_INTERVAL). Synapse's
-   shorter waits are not used: they are tuned for a loop that rewrites.
+   waits (their unit is not checked) are not used; [HYPOTHESIS] they are
+   tuned for a loop that rewrites.
 3. If byte 1, 6 or 7 differs from the request, the report still holds an
    older exchange: re-read.
 4. If the header matches and the status is 0x00 or 0x01, the command is
@@ -344,9 +347,9 @@ passes these reads to the real keyboard whenever Synapse asks.
 |---|---|---|---|---|---|---|---|---|---|
 | device-info | 0x00 | 0x81 | Get Firmware Version | read | 2 | yes | confirmed | synapse:c1e6a425@280681#129; synapse:c1e6a425@280694#Firmware; synapse:c1e6a425@279884#K_; synapse:c1e6a425@1093638#K_; zexrox:native/host.py:22@840f03dc | Confirmed (both sources): class, ID, read. Likely (Synapse only): name, size 2, reply layout (see Reply layouts); zexrox does not check this size. No arguments. |
 | device-info | 0x00 | 0x82 | Get Serial Number | read | 22 | yes | confirmed | synapse:c1e6a425@280735#130; synapse:c1e6a425@280775#Serial; synapse:c1e6a425@279893#Kr; synapse:c1e6a425@280580#yf; synapse:c1e6a425@1093877#Kr; zexrox:native/host.py:22@840f03dc | Confirmed (both sources): class, ID, read. Likely (Synapse only): name, size 22, reply layout; zexrox does not check this size. No arguments. [HYPOTHESIS] The reply is the unit's serial, so this repo keeps it out of logs and bug reports. |
-| device-info | 0x00 | 0x84 | Get Device Mode | read | 2 | no | confirmed | synapse:c1e6a425@280913#132; synapse:c1e6a425@280952#Device; zexrox:native/host.py:22@840f03dc | Confirmed (both sources): class, ID, read. Likely (Synapse only): size 2. [HYPOTHESIS] The name is paired with the triple by its position in Synapse's command list. Reply layout not traced. Not on the diagnostics list in this version. |
-| device-info | 0x00 | 0x86 | Get Edition Information | read | 3 | no | confirmed | synapse:c1e6a425@281121#134; synapse:c1e6a425@281159#Edition; zexrox:native/host.py:22@840f03dc | Confirmed (both sources): class, ID, read. Likely (Synapse only): size 3. [HYPOTHESIS] The name is paired with the triple by its position in Synapse's command list. Reply layout not traced. Not on the diagnostics list in this version. |
-| device-info | 0x00 | 0x87 | Get Extended Firmware Version | read | 4 | no | confirmed | synapse:c1e6a425@281203#135; synapse:c1e6a425@281225#Firmware; zexrox:native/host.py:22@840f03dc | Confirmed (both sources): class, ID, read. Likely (Synapse only): size 4. [HYPOTHESIS] The name is paired with the triple by its position in Synapse's command list. Reply layout not traced. Not on the diagnostics list in this version. |
+| device-info | 0x00 | 0x84 | Get Device Mode | read | 2 | no | confirmed | synapse:c1e6a425@280913#132; synapse:c1e6a425@280952#Device; synapse:c1e6a425@1094890#Ii; zexrox:native/host.py:22@840f03dc | Confirmed (both sources): class, ID, read. Likely (Synapse only): size 2. Likely (Synapse only): the name, paired with the triple where Synapse sends it (synapse:c1e6a425@1094890#Ii). Reply layout not traced. Not on the diagnostics list in this version. |
+| device-info | 0x00 | 0x86 | Get Edition Information | read | 3 | no | confirmed | synapse:c1e6a425@281121#134; synapse:c1e6a425@281159#Edition; synapse:c1e6a425@1094540#dx; zexrox:native/host.py:22@840f03dc | Confirmed (both sources): class, ID, read. Likely (Synapse only): size 3. Likely (Synapse only): the name, paired with the triple where Synapse sends it (synapse:c1e6a425@1094540#dx). Reply layout not traced. Not on the diagnostics list in this version. |
+| device-info | 0x00 | 0x87 | Get Extended Firmware Version | read | 4 | no | confirmed | synapse:c1e6a425@281203#135; synapse:c1e6a425@281225#Firmware; synapse:c1e6a425@1097158#O3; zexrox:native/host.py:22@840f03dc | Confirmed (both sources): class, ID, read. Likely (Synapse only): size 4. Likely (Synapse only): the name, paired with the triple where Synapse sends it (synapse:c1e6a425@1097158#O3). Reply layout not traced. Not on the diagnostics list in this version. |
 | device-info | 0x00 | 0x02 | Set Serial Number | write | 22 | no | likely | synapse:c1e6a425@280759#22; synapse:c1e6a425@280797#Serial; synapse:c1e6a425@279741#AQ; synapse:c1e6a425@279828#I0; synapse:c1e6a425@1094070#AQ | Synapse only; zexrox does not list it. Overwrites the serial: never send. Same class and size as 0x00:0x82; the ID differs only in bit 7 (see below). |
 
 Set Serial Number (0x00:0x02) and Get Serial Number (0x00:0x82) share class
@@ -430,7 +433,8 @@ shape of a successful answer to G1: status 0x02, transaction ID 0x00 repeated,
 size 0x02, class and ID repeated, data[0] = 0x01 (major), data[1] = 0x02
 (minor). Byte 88 follows the request rule (0x02 XOR 0x81 XOR 0x01 XOR 0x02 =
 0x80) although neither source checks a reply's checksum; what a real 02A7
-puts in bytes 2 to 4 and 88 of a reply is not established.
+puts in bytes 2 to 4 and 88 of a reply is not established. No real 02A7
+reply has been captured, so this response is synthetic.
 
 ## Sources
 

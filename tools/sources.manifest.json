@@ -75,5 +75,14 @@
       "issue.json": "52081fe81cff702cefe26fda7472d0c277150657ba825b511a51bf76468ee2b1",
       "discussions.json": "247c36ad12db0a5d5658569792d82c398e39b79591b2c6065e8fea03bf4b1c57"
     }
+  },
+  "hut": {
+    "fetched": "2026-10-14",
+    "urls": {
+      "hut1_5.pdf": "https://usb.org/sites/default/files/hut1_5.pdf"
+    },
+    "files": {
+      "hut1_5.pdf": "f4ead217b01134f89199155ed616d4eeae9ad40a5f73dad9544002b592c07db3"
+    }
   }
 }

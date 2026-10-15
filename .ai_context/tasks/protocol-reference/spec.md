@@ -102,3 +102,8 @@ after the owner runs a read-only WebUSB probe.)
   Synapse names with "Analog" are shortened by dropping that word (rule
   stated in the doc); the placement of 0x02:0xb1/0x31 under snap-tap and
   of 0x9f/0xaf/0xa8/0x28 under actuation is this doc's choice.]
+- [ASSUMED: (M7) Set LED State 0x03:0x00 counts as 0498-supported for
+  LED id 8 only, because zexrox's own host sends that packet (built from
+  its captures) to a real 02A7, though it never checks the reply status;
+  the six LampArray rows are `likely` (field names and roles rest on HUT
+  alone); lighting sets that zexrox only forwards stay `likely`.]

@@ -309,6 +309,46 @@ Facts and open points for the follow-up task, which makes the choice.
   (openrgb#4418:2278000670). Which interface that controller opens for the 02A7 was
   not read.
 
+## LampArray (standard HID lighting)
+
+USB interface 4 is a standard HID LampArray: usage page 0x59 (Lighting and
+Illumination), usage 0x01, with six feature reports of 22, 2, 28, 50, 9 and
+1 data bytes (probe:.ai_context/knowledge/hid-02a7-macos.txt#kbd-lamparray;
+probe:.ai_context/knowledge/hid-02a7-macos.txt#IOUSBHostInterface@4). Chrome's
+WebHID offered the same collection with the same six reports and sizes on the
+owner's Mac (probe:.ai_context/knowledge/webusb-probe-02a7-macos.txt#webhid.lamparray), and Chromium's protected-collection rule does not cover
+page 0x59
+(chromium:services/device/public/cpp/hid/hid_report_utils.cc:45@1aeca202#kPageGenericDesktop;
+see Protected collections).
+
+The table decodes, item by item, the 327-byte report descriptor on the line
+after the kbd-lamparray key of the owner's dump; each Source names a byte run
+that opens that report's collection. Field names are the usage names of the
+USB-IF HID Usage Tables 1.5, chapter 26 (url:https://usb.org/sites/default/files/hut1_5.pdf). Size counts data bytes; each
+report is one byte longer on the wire for its report ID. All six are Feature
+reports, and the descriptor does not say which side reads or writes them:
+Direction gives the role the HUT usage descriptions assign; HUT 26.6 sends
+report 6 with a SetReport. Sizes are seen twice
+(descriptor and Chrome); field names and roles rest on HUT alone, so every row
+is tagged likely.
+
+| Report | ID | Direction | Size | Fields | Source | Confidence |
+|---|---|---|---|---|---|---|
+| LampArrayAttributesReport | 1 | feature, get | 22 | `LampCount` (0x03), 16-bit; `BoundingBoxWidthInMicrometers`, `BoundingBoxHeightInMicrometers`, `BoundingBoxDepthInMicrometers`, `LampArrayKind`, `MinUpdateIntervalInMicroseconds` (0x04 to 0x08), 32-bit each, logical 0 to 0x7FFFFFFF. The main item's flags are 0x03 (Constant, Variable, Absolute); HUT types these usages as static values, which a set cannot change (HUT 3.4.2.2, 26.2). | probe:.ai_context/knowledge/hid-02a7-macos.txt#05590901a10185010902a102; probe:.ai_context/knowledge/webusb-probe-02a7-macos.txt#webhid.lamparray; url:https://usb.org/sites/default/files/hut1_5.pdf | likely |
+| LampAttributesRequestReport | 2 | feature, set | 2 | `LampId` (0x21), 16-bit, logical 0 to 65535: the lamp whose attributes report 3 returns next (HUT 26.3). | probe:.ai_context/knowledge/hid-02a7-macos.txt#c085020920a102; probe:.ai_context/knowledge/webusb-probe-02a7-macos.txt#webhid.lamparray; url:https://usb.org/sites/default/files/hut1_5.pdf | likely |
+| LampAttributesResponseReport | 3 | feature, get | 28 | `LampId`, 16-bit; `PositionXInMicrometers`, `PositionYInMicrometers`, `PositionZInMicrometers`, `UpdateLatencyInMicroseconds`, `LampPurposes`, 32-bit each, in that order (usages 0x23, 0x24, 0x25, 0x27, 0x26); `RedLevelCount`, `GreenLevelCount`, `BlueLevelCount`, `IntensityLevelCount`, `IsProgrammable`, `InputBinding` (0x28 to 0x2D), 8-bit each, logical 0 to 255 (HUT 26.3). | probe:.ai_context/knowledge/hid-02a7-macos.txt#c085030922a102; probe:.ai_context/knowledge/webusb-probe-02a7-macos.txt#webhid.lamparray; url:https://usb.org/sites/default/files/hut1_5.pdf | likely |
+| LampMultiUpdateReport | 4 | feature, set | 50 | `LampCount` (0x03) and `LampUpdateFlags` (0x55), 8-bit each, logical 0 to 8; eight `LampId` fields, 16-bit each; then 32 bytes: `RedUpdateChannel`, `GreenUpdateChannel`, `BlueUpdateChannel`, `IntensityUpdateChannel` (0x51 to 0x54) for each of up to 8 lamps, logical 0 to 255 (HUT 26.4). | probe:.ai_context/knowledge/hid-02a7-macos.txt#c085040950a102; probe:.ai_context/knowledge/webusb-probe-02a7-macos.txt#webhid.lamparray; url:https://usb.org/sites/default/files/hut1_5.pdf | likely |
+| LampRangeUpdateReport | 5 | feature, set | 9 | `LampUpdateFlags`, 8-bit, logical 0 to 8; `LampIdStart` (0x61) and `LampIdEnd` (0x62), 16-bit each; one red, green, blue and intensity update channel, 8-bit each (HUT 26.4). | probe:.ai_context/knowledge/hid-02a7-macos.txt#c085050960a102; probe:.ai_context/knowledge/webusb-probe-02a7-macos.txt#webhid.lamparray; url:https://usb.org/sites/default/files/hut1_5.pdf | likely |
+| LampArrayControlReport | 6 | feature, set | 1 | `AutonomousMode` (0x71), 8-bit, logical 0 to 1 (HUT 26.5). | probe:.ai_context/knowledge/hid-02a7-macos.txt#c085060970a102; probe:.ai_context/knowledge/webusb-probe-02a7-macos.txt#webhid.lamparray; url:https://usb.org/sites/default/files/hut1_5.pdf | likely |
+
+Nothing has been sent to interface 4 yet. The table says what the descriptor
+declares, not what the firmware does: the lamp count and the `LampArrayKind`
+value (HUT lists 0x01 as keyboard) are unknown until a read-only test gets
+feature report 1. Lamp positions and key bindings come from report 3, which
+answers for the lamp named by a set of report 2, so reading them is not a
+read-only step (HUT 26.3). Whether autonomous mode is on at power-up is
+unknown; HUT 26.5 gives enabled as the default.
+
 ## Commands
 
 Synapse declares every command as a three-byte triple: data size, command
@@ -433,6 +473,16 @@ priority choice.
 | snap-tap | 0x02 | 0x2c | Set Single-key Snap Tap Ctrl | write | 11 | no | likely | synapse:c1e6a425@1047561#44; synapse:c1e6a425@1047556#11; synapse:c1e6a425@1047608#Single; zexrox:README.md:25@840f03dc#Snap | Synapse only (likely): set ID, size 11; name paired by declaration order [HYPOTHESIS]. Argument layout not traced. 0498 firmware: unsupported (README: single-key Snap Tap; pairing by name is [HYPOTHESIS]). |
 | snap-tap | 0x02 | 0xb1 | Get Dual Keypress Priority | read | 7 | no | confirmed | synapse:c1e6a425@1048389#177; synapse:c1e6a425@1048385#7; synapse:c1e6a425@1048431#Dual; zexrox:native/host.py:62@840f03dc#0xb1 | Confirmed: class, ID, read. Likely (Synapse; zexrox's list copies it): size 7, name. Reply layout not traced. Not on the diagnostics list in this version. 0498 firmware: unknown (zexrox only lists and forwards it). [HYPOTHESIS] Grouped with Snap Tap by this document. |
 | snap-tap | 0x02 | 0x31 | Set Dual Keypress Priority | write | 7 | no | likely | synapse:c1e6a425@1048418#49; synapse:c1e6a425@1048414#7; synapse:c1e6a425@1048463#Dual | Synapse only (likely): set ID, size 7; name paired by declaration order [HYPOTHESIS]. Argument layout not traced. 0498 firmware: unknown. [HYPOTHESIS] Grouped with Snap Tap by this document. |
+| lighting | 0x03 | 0x80 | Get LED State | read | 3 | no | confirmed | synapse:c1e6a425@2026854#128; synapse:c1e6a425@2026850#3; synapse:c1e6a425@2026897#State; zexrox:native/host.py:59@840f03dc#0x80 | Confirmed: class, ID, read. Likely (Synapse; zexrox copies its names and sizes, zexrox:native/host.py:25@840f03dc): size 3, name paired by declaration order [HYPOTHESIS]; zexrox checks the size of the reads it lists (zexrox:native/host.py:119-124@840f03dc). Synapse declares it in module 69541, which 17937 does not import directly; how product 720 reaches it is not traced. Synapse module 1207 also declares a size-0 0x03:0x80 triple next to its profile command names (synapse:c1e6a425@52377#128); which one the 0498 answers is unknown. Reply layout not traced. Not on the diagnostics list in this version. 0498 firmware: unknown (zexrox only lists and forwards it). |
+| lighting | 0x03 | 0x00 | Set LED State | write | 3 | no | confirmed | synapse:c1e6a425@2026882#0; synapse:c1e6a425@2026878#3; synapse:c1e6a425@2026915#State; zexrox:native/host.py:355-369@840f03dc; zexrox:native/host.py:439-453@840f03dc; zexrox:native/host.py:506-525@840f03dc | Confirmed: class, ID, write, size 3. zexrox's own host builds this set for the real 02A7 (size 3; arguments 0x00, LED id 0x08 for the game-mode LED, then 0x01 on or 0x00 off) and sends it under its device lock (zexrox:native/host.py:355-369@840f03dc; zexrox:native/host.py:439-453@840f03dc; zexrox:native/host.py:455-457@840f03dc); Synapse declares size 3 as well. Likely (Synapse; zexrox uses the same name): name. zexrox answers Synapse's own LED-8 sets on the host and forwards other LED ids (zexrox:native/host.py:506-525@840f03dc). The meaning of argument byte 0 and LED ids other than 8 are not traced. Synapse declares it in module 69541, not imported by 17937. 0498 firmware: supported for LED id 8 (zexrox sends it to the 02A7 with a payload it attributes to captures, zexrox:native/host.py:356-358@840f03dc; it does not check the reply status); other LED ids unknown. |
+| lighting | 0x0f | 0x80 | Get Chroma Region ID List | read | 80 | no | confirmed | synapse:c1e6a425@10190#128; synapse:c1e6a425@10184#80; synapse:c1e6a425@10210#Region; zexrox:native/host.py:23@840f03dc#0x80 | Confirmed: class, ID, read. Likely (Synapse; zexrox's list copies it): name, declared right after the triple; size 80 as declared, the size Synapse sends is not traced. Synapse declares every class-0x0F triple below in module 436, which the transport module 17937 imports (synapse:c1e6a425@404219#436); the code that sends this one for product 720 is not traced. Reply layout not traced. Not on the diagnostics list in this version. 0498 firmware: unknown (zexrox only lists and forwards it). |
+| lighting | 0x0f | 0x82 | Get Chroma Effect | read | 80 | no | confirmed | synapse:c1e6a425@10280#130; synapse:c1e6a425@10274#80; synapse:c1e6a425@11260#Effect; zexrox:native/host.py:23@840f03dc#0x82 | Confirmed: class, ID, read. Likely (Synapse; zexrox's list copies it): name, paired by declaration order in module 436 [HYPOTHESIS]. Size: declared 80; a Synapse module outside 17937 sends exports named ms and KM (in module 436, this triple and this name) at size 5 with arguments profile, region, 13, 0 and one more byte (synapse:c1e6a425@156412#KM; synapse:c1e6a425@156417#5); that module's import of 436 and the size product 720 sends are not traced [HYPOTHESIS]. Reply layout not traced. Not on the diagnostics list in this version. 0498 firmware: unknown (zexrox only lists and forwards it). |
+| lighting | 0x0f | 0x02 | Set Chroma Effect | write | 6+3×colours | no | likely | synapse:c1e6a425@10310#2; synapse:c1e6a425@10304#80; synapse:c1e6a425@11282#Effect; synapse:c1e6a425@429571#aA; synapse:c1e6a425@429698#6 | Synapse only (likely). Module 17937 builds this set from the module-436 triple: byte 0 profile, 1 region, 2 effect ID, 3 flags, 4 rate, 5 colour count, then RGB triples from byte 6, and passes 6 plus the colour bytes as the size instead of the declared 80 (synapse:c1e6a425@429571#aA; synapse:c1e6a425@429698#6). Name paired by declaration order [HYPOTHESIS]; the builder's field names fit it. Effect ID values not traced. zexrox does not list it; its host forwards unlisted well-formed writes, lighting included (zexrox:native/host.py:19-21@840f03dc). 0498 firmware: unknown. |
+| lighting | 0x0f | 0x03 | Set Chroma Frame | write | 5+colour bytes | no | likely | synapse:c1e6a425@10338#3; synapse:c1e6a425@10332#80; synapse:c1e6a425@11304#Frame; synapse:c1e6a425@481515#Qe; synapse:c1e6a425@427390#sk; synapse:c1e6a425@427506#5 | Synapse only (likely). Module 17937 pairs this triple with the name Set Chroma Frame in its lighting-engine frame setter, which sends one request per key row (synapse:c1e6a425@481515#Qe). Its frame builder fills byte 0 profile, 1 region, 2 row, 3 start, 4 end, then the colours from byte 5, and reports 5 plus the colour bytes as the set size (synapse:c1e6a425@427390#sk; synapse:c1e6a425@427506#5); the caller that sends it was not read, so the sent size is [HYPOTHESIS] (declared 80). This is the per-key custom frame; colour byte order not traced. zexrox forwards it as an unlisted write (zexrox:native/host.py:19-21@840f03dc). 0498 firmware: unknown. |
+| lighting | 0x0f | 0x84 | Get Chroma Brightness | read | 3 | no | confirmed | synapse:c1e6a425@10392#132; synapse:c1e6a425@10387#3; synapse:c1e6a425@11325#Brightness; zexrox:native/host.py:23@840f03dc#0x84 | Confirmed: class, ID, read. Likely (Synapse; zexrox's list copies it): size 3 as declared, name paired by declaration order in module 436 [HYPOTHESIS]. Reply layout not traced. Not on the diagnostics list in this version. 0498 firmware: unknown (zexrox only lists and forwards it). |
+| lighting | 0x0f | 0x04 | Set Chroma Brightness | write | 3 | no | likely | synapse:c1e6a425@10422#4; synapse:c1e6a425@10417#3; synapse:c1e6a425@11351#Brightness | Synapse only (likely): set ID, size 3 as declared (sent size not traced); name paired by declaration order [HYPOTHESIS]. Argument layout not traced. zexrox forwards it as an unlisted write (zexrox:native/host.py:19-21@840f03dc). 0498 firmware: unknown. |
+| lighting | 0x0f | 0x90 | Get Force Chroma Ctrl | read | 1 | no | confirmed | synapse:c1e6a425@10711#144; synapse:c1e6a425@10706#1; synapse:c1e6a425@10752#Force; zexrox:native/host.py:23@840f03dc#0x90 | Confirmed: class, ID, read. Likely (Synapse; zexrox's list copies it): size 1, name paired by declaration order [HYPOTHESIS]. What it controls is not traced. Reply layout not traced. Not on the diagnostics list in this version. 0498 firmware: unknown (zexrox only lists and forwards it). |
+| lighting | 0x0f | 0x10 | Set Force Chroma Ctrl | write | 1 | no | likely | synapse:c1e6a425@10740#16; synapse:c1e6a425@10735#1; synapse:c1e6a425@10778#Force | Synapse only (likely): set ID, size 1 as declared; name paired by declaration order [HYPOTHESIS]. Argument layout not traced. 0498 firmware: unknown. |
 
 Set Serial Number (0x00:0x02) and Get Serial Number (0x00:0x82) share class
 and size and differ in one bit of byte 7, so one flipped bit turns the safe
@@ -459,6 +509,10 @@ below is byte 8 + n of the reply.
 | 0x02:0xa1 Get Keyboard Kill Switch Ctrl | data[0] to data[3] | Profile, enabled flag, first key id, second key id, as zexrox reads the keyboard's reply. One source (zexrox): likely. | zexrox:native/host.py:205@840f03dc#firmware |
 | 0x02:0x21 Set Keyboard Kill Switch Ctrl | request data[0] to data[3] | Profile, enabled flag (0 and 1 in zexrox's capture), first key id, second key id. One source (zexrox): likely. | zexrox:native/host.py:172-174@840f03dc; zexrox:native/host.py:186-192@840f03dc |
 | 0x02:0x27 Set Snap Tap Ctrl | request data[0] to data[5] | Profile, number of pairs, enabled flag, key id, key id, mode. [HYPOTHESIS] The last three repeat for each further pair. One source (zexrox): likely. | zexrox:native/host.py:174-176@840f03dc; zexrox:native/host.py:188-192@840f03dc |
+
+### Gaps
+
+- lighting: OpenRGB's Razer controller, which issue 4418 reports drives the 02A7's lighting, was not read for these rows, so their 0498 verdicts stay unknown apart from LED id 8 — openrgb#4418:2268400656; openrgb#4418:2277608481; openrgb#4418:2277952715
 
 ## Golden packets
 
@@ -542,3 +596,8 @@ notes through the public discussions endpoint, because the notes API needs a
 login. The owner's macOS dump and the owner's read-only probe run are part of
 this repo: `.ai_context/knowledge/hid-02a7-macos.txt` and
 `.ai_context/knowledge/webusb-probe-02a7-macos.txt`.
+
+The USB-IF HID Usage Tables 1.5 were fetched on 2026-10-14 as `hut1_5.pdf`
+from `https://usb.org/sites/default/files/hut1_5.pdf`; its sha256 is in the
+manifest. The LampArray section takes its field names from chapter 26 of that
+document; those citations are checked for grammar only.

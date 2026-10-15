@@ -195,7 +195,7 @@ goes in Notes: README:25 ⇒ unsupported; capture / 0498-specific rewrite ⇒ su
 direction only (zexrox's bridge sends that request to a real 02A7); name and size stay `likely` unless
 a 0498 capture or rewrite backs them; firmware support lives in Notes / the Feature matrix. -->
 
-## M7: protocol.md — lighting commands [in_progress]
+## M7: protocol.md — lighting commands [done]
 - verify: `bash -c 'S=/tmp/claude-1000/-code-razer-driver/9f95b686-1bf0-4dae-a24a-b65ac47b4fc6/scratchpad/sources; node tools/check-protocol-doc.mjs --require=sources,framing,status,commands,golden,control,lamparray --groups=device-info,actuation,rapid-trigger,snap-tap,lighting --sources=$S && test "$(grep -cE "^\| *lighting *\|" .ai_context/knowledge/protocol.md)" -ge 4'`
 - risk: med
 - demo: protocol.md lists the Razer lighting commands (LED state, effects, brightness, per-key custom frame), each cited, and a LampArray section describing the keyboard's standard lighting interface (interface 4) report by report.
@@ -216,7 +216,15 @@ matching lighting rows may get a "supported" verdict; else they stay "unknown".
 owner's probe run (knowledge/webusb-probe-02a7-macos.txt: 6a/6b/6c refused, 6d ok; if3 descriptor =
 0x0C/0x01 + one 90-B feature report; if3 has only an interrupt OUT endpoint; WebHID offers 4 devices),
 turning predictions into observations; plus drift-M5 N2 (tag :255), N5 (url-only Chromium history),
-N6 (openrgb note-id citations); add the probe file to the manifest/citation scheme if needed.
+N6 (openrgb note-id citations); add the probe file to the manifest/citation scheme if needed. DONE 2026-10-15 in 05bf699.
+2026-10-15 (verifier of 05bf699 — FAIL, fix AFTER the M7 commit, separate fix commit, ## Control interface only):
+D1 tag the if3 attribution where it is stated as fact (Interfaces table if3 row; Transport (a) "6d returned
+interface 3's report descriptor"; add a probe citation to the likely row that says "gives 0x0C/0x01");
+D2 "agrees with each point" is false for interface 2 — the mouse was offered with its input listed though
+IsAlwaysProtected protects Mouse input; say so and add an open question; D3 cite the closing event
+openrgb#4418:01baff8aec64613fdaab9bf31fed650f89d21e70, not 2278000670 (a "mentioned in" note); also
+restore the open question "why does macOS bind no driver to interface 3" and bump protocol.md's
+"Last updated" line. state.md and an ADR-003 erratum were already fixed (uncommitted).
 2026-10-14 (M5): owner dump gives if4 feature sizes id1..6 = 22,2,28,50,9,1 B (max 51); WebHID treats
 page 0x59 as unprotected (chromium hid_report_utils.cc:45 @1aeca202, already in manifest) — reuse
 those citations rather than re-fetching. 
@@ -224,7 +232,7 @@ those citations rather than re-fetching.
 argument that overwrites byte 5 (@435514, @431246); check the callers before stating a size, and grade
 name/size per drift N1 (zexrox copies them). -->
 
-## M8: protocol.md — keymap, Hypershift, macro commands [pending]
+## M8: protocol.md — keymap, Hypershift, macro commands [in_progress]
 - verify: `bash -c 'S=/tmp/claude-1000/-code-razer-driver/9f95b686-1bf0-4dae-a24a-b65ac47b4fc6/scratchpad/sources; node tools/check-protocol-doc.mjs --require=sources,framing,status,commands,golden,control --groups=device-info,actuation,rapid-trigger,snap-tap,lighting,keymap,hypershift,macro --sources=$S && grep -qE "^\| *macro *\| *0x06 *\|" .ai_context/knowledge/protocol.md'`
 - risk: med
 - demo: protocol.md covers key remapping, the Hypershift layer and onboard macros, each cited; anything the sources do not pin down is visibly tagged [HYPOTHESIS] or listed under Gaps.
@@ -268,7 +276,13 @@ imports both 17937 and 1207) before citing 1207's Snap Tap code. The M6 rows
 already carry per-command 0498 verdicts (supported / unsupported / unknown) — reuse them. 
 2026-10-15 (M6 verifier): a Synapse triple's size is only the DECLARED size — sendCommand takes a size
 argument that overwrites byte 5 (@435514, @431246); check the callers before stating a size, and grade
-name/size per drift N1 (zexrox copies them). -->
+name/size per drift N1 (zexrox copies them). 
+2026-10-15 (M7): lighting matrix rows stay "unknown" except LED id 8 (zexrox's own 03:00 write) unless
+OpenRGB's controller is read. Synapse module 436 also declares 0x0f:0x81, 0x85/0x05 Chroma Calibration,
+0x86/0x06 Fn Overlay, 0x07 Set New Chroma Frame, 0x88/0x08, 0x92-0x94/0x12-0x14, 0x17 Trigger Firmware
+Effects — no rows yet; list them as matrix "unknown" only if a Synapse feature maps to them. LampArray:
+the first hardware step for the follow-up is a read-only Get Feature of report 1 (report 3 needs a
+set of report 2 first, so it is not read-only). -->
 
 ## M10a: Checker pins the Chromium and OpenRGB sources by hash [pending]
 - verify: `bash -c 'S=/tmp/claude-1000/-code-razer-driver/9f95b686-1bf0-4dae-a24a-b65ac47b4fc6/scratchpad/sources; node --test tools/ >/dev/null || exit 1; T=$(mktemp -d); cp -r "$S/." "$T/"; printf x >> "$T/chromium/services/device/hid/hid_connection.cc"; node tools/check-protocol-doc.mjs --require=none --sources="$T" >/dev/null 2>&1; test $? -eq 2 || exit 1; U=$(mktemp -d); cp -r "$S/." "$U/"; printf x >> "$U/openrgb-4418/issue.json"; node tools/check-protocol-doc.mjs --require=none --sources="$U" >/dev/null 2>&1; test $? -eq 2 || exit 1; Z=$(mktemp -d); mkdir "$Z/zexrox"; cp -r "$S/zexrox/." "$Z/zexrox/"; node tools/check-protocol-doc.mjs --require=none --sources="$Z" --only=zexrox && node tools/check-protocol-doc.mjs --require=all --groups=all --sources="$S"'`

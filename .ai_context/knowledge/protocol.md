@@ -34,6 +34,9 @@ Confidence: `confirmed` = seen on a real 02A7 (the owner's macOS dump, or
 zexrox running against one) or stated by two independent sources that agree;
 `likely` = one source only (Synapse, zexrox's code, Chromium at the pinned
 commit, or OpenRGB); `[HYPOTHESIS]` = this document's inference or choice.
+In Commands rows the Confidence column covers class, ID and direction only;
+name, size, layout and firmware support are graded in each row's Notes and in
+the Feature matrix.
 
 ## Framing
 
@@ -202,7 +205,7 @@ this document.
 | WebHID can only offer collections the OS HID stack exposes, which would explain why the probe was offered no interface-3 device on macOS. | probe:.ai_context/knowledge/hid-02a7-macos.txt#IOUSBHostInterface@3; probe:.ai_context/knowledge/webusb-probe-02a7-macos.txt#webhid.notOffered; url:https://wicg.github.io/webhid/ | [HYPOTHESIS] |
 | zexrox, against a real 02A7 on Windows, keeps only the interface-3 collections of 1532:02A7 (interface number 3, or mi_03 in the path), refuses to open unless exactly one matches, and never looks at its usage page. There it uses report-ID-0 feature reports: it writes the ID byte plus 90 B, and reads by asking for 91 B, taking either 91 B that start with ID 0 (the ID byte is dropped) or a bare 90 B. | zexrox:native/host.py:455-464@840f03dc#mi_03; zexrox:native/host.py:446@840f03dc#send_feature_report; zexrox:native/host.py:408-418@840f03dc#get_feature_report | confirmed |
 | zexrox also watches interface 1 for the Fn key. Per its notes the 48-byte interrupt payload on endpoint 0x82 begins with report ID 0x04 (the dump's 47 B input plus the ID byte), and the byte after it is 1 while Fn is held. It opens every mi_01 collection, keeps the one that delivers that report, closes the others, and never opens interface 0; Fn+F10 switches a lock of its own on the Windows side. | zexrox:native/host.py:225-229@840f03dc#0x82; zexrox:native/host.py:319-333@840f03dc#mi_01; zexrox:native/host.py:707-762@840f03dc#_acquire_fn_reader; zexrox:native/host.py:560@840f03dc#F10; probe:.ai_context/knowledge/hid-02a7-macos.txt#kbd-multi | confirmed |
-| Synapse (for 02D0) matches WebHID devices on vendor ID, its product IDs and a usage page. The default usage page is 12 (0x0C, Consumer), a bundle constant exported as MU; the device config may replace it and add a usage, and the 02D0 config was not read. Its feature-report device is an unopened match with exactly one collection, on that usage page, which has the configured usage or, when no usage is configured, at least one feature report. | synapse:c1e6a425@2672184#usagePage; synapse:c1e6a425@545501#MU; synapse:c1e6a425@545646#12; synapse:c1e6a425@2679560#usagePage; synapse:c1e6a425@2677504#isFeatureReportDevice | likely |
+| Synapse (for 02D0) matches WebHID devices on vendor ID, its product IDs and a usage page. The default usage page is 12 (0x0C, Consumer), a bundle constant exported as MU; the device config may replace it and add a usage. The product-720 (02D0) configuration in Synapse module 5315 sets `claimInterface` to 3 and has no `usagePage` key; modules 41782 and 78193 hold two more product-720 configurations, and which one the page loads is not traced. Its feature-report device is an unopened match with exactly one collection, on that usage page, which has the configured usage or, when no usage is configured, at least one feature report. | synapse:c1e6a425@2672184#usagePage; synapse:c1e6a425@545501#MU; synapse:c1e6a425@545646#12; synapse:c1e6a425@2679560#usagePage; synapse:c1e6a425@2677504#isFeatureReportDevice; synapse:c1e6a425@235199#720; synapse:c1e6a425@235284#claimInterface; synapse:c1e6a425@1211158#720; synapse:c1e6a425@2150414#720 | likely |
 | For hardware events Synapse first reuses the feature-report device: it keeps that device unless its first collection's input-report list is empty. zexrox's fake 02D0 lists an input report on its single collection so that this listener attaches there. | synapse:c1e6a425@2676118#connectHardwareEventDevice; zexrox:extension/virtual-hid.js:224-226@840f03dc#inputReports | confirmed |
 | Only when that list is empty does Synapse search the devices the page already holds permission for (getDevices) for one that is unopened, has the vendor ID and a known product ID, a non-empty product name, more than one collection and at least one collection with input reports; it then opens that device and listens to its input reports. | synapse:c1e6a425@2676118#connectHardwareEventDevice; synapse:c1e6a425@2676274#getDevices; synapse:c1e6a425@2676390#productName | likely |
 | zexrox's fake 02D0 shows Synapse one collection (usage page 12, usage 1) with input report 1 and a 90-byte feature report 0: the shape Synapse looks for, not the real 02A7 layout. On the real keyboard zexrox needs exactly one interface-3 collection and never checks its usage page; the probe's descriptor read (rows above) gives 0x0C/0x01, [HYPOTHESIS] for interface 3. Of the five interfaces macOS exposes, none is a lone usage-page-12 collection; interface 1 has 0x0C/0x01 as one of seven. | zexrox:extension/virtual-hid.js:224-235@840f03dc#usagePage; zexrox:native/host.py:455-464@840f03dc#mi_03; probe:.ai_context/knowledge/hid-02a7-macos.txt#kbd-multi; probe:.ai_context/knowledge/hid-02a7-macos.txt#IOUSBHostInterface@3; probe:.ai_context/knowledge/webusb-probe-02a7-macos.txt#if3.reportDescriptor | likely |
@@ -292,6 +295,23 @@ Facts and open points for the follow-up task, which makes the choice.
   claim it without detaching a driver ([HYPOTHESIS] until tested). zexrox
   shows the same channel working natively on Windows through hidapi. The
   owner chose this option on 2026-10-15 (ADR-003 in decisions.md).
+  [HYPOTHESIS], untested: on this path the 90-byte report travels as a class
+  SET_REPORT or GET_REPORT on the default control pipe, recipient interface,
+  wValue 0x0300 (feature report, report ID 0), wIndex 3, with a 90-byte data
+  stage that holds no report-ID byte. Basis: the descriptor taken to be
+  interface 3's (read with a device-recipient request, so its attribution is
+  itself [HYPOTHESIS]) declares one 90-byte feature report and no report ID
+  (probe:.ai_context/knowledge/webusb-probe-02a7-macos.txt#if3.reportDescriptor);
+  the probe's 6a requested this GET_REPORT setup, but the browser refused it
+  before any transfer (InvalidStateError, interface not claimed), so the
+  device never answered it
+  (probe:.ai_context/knowledge/webusb-probe-02a7-macos.txt#6a.getFeatureReport.interface);
+  HID 1.11 defines both requests
+  (url:https://www.usb.org/sites/default/files/hid1_11.pdf); and zexrox puts an
+  ID byte 0 before the 90 bytes it sends and strips a leading 0 from a 91-byte
+  reply, so the 90 bytes it keeps carry no ID
+  (zexrox:native/host.py:408-418@840f03dc#get_feature_report,
+  zexrox:native/host.py:446@840f03dc#send_feature_report).
 - (c) WebHID for what macOS exposes: LampArray lighting on interface 4, the
   unprotected inputs of interface 1 and the vendor reports of interface 5, all
   of which the probe was offered. It cannot reach the control channel.
@@ -380,9 +400,11 @@ zexrox:native/host.py:506-525@840f03dc). Its host sends every other
 well-formed report, the class-0 reads included, to the real 02A7 as received,
 size byte included (zexrox:native/host.py:526-532@840f03dc). It lists the
 class-0 reads it had already identified, without their sizes
-(zexrox:native/host.py:18-24@840f03dc). So for the class-0 reads below, the class, ID and read direction are confirmed by
-both sources, while the name, the size and the reply layout come from Synapse
-only and are likely; each row's Notes say so.
+(zexrox:native/host.py:18-24@840f03dc). So for the class-0 reads below, the class, ID and read direction are
+confirmed because zexrox's bridge sends them to a real 02A7; zexrox's list is
+not counted as a second source (see the class 0x02 paragraph below). The name,
+the size and the reply layout come from Synapse only and are likely; each
+row's Notes say so.
 
 Safe is this repo's allowlist, not a source fact: `yes` only on a confirmed
 read that a read-only diagnostics probe may send; every write is `no`.
@@ -458,11 +480,11 @@ priority choice.
 
 | Group | Class | ID | Name | Dir | Size | Safe | Confidence | Source | Notes |
 |---|---|---|---|---|---|---|---|---|---|
-| device-info | 0x00 | 0x81 | Get Firmware Version | read | 2 | yes | confirmed | synapse:c1e6a425@280681#129; synapse:c1e6a425@280694#Firmware; synapse:c1e6a425@279884#K_; synapse:c1e6a425@1093638#K_; zexrox:native/host.py:22@840f03dc | Confirmed (both sources): class, ID, read. Likely (Synapse only): name, size 2, reply layout (see Reply layouts); zexrox does not check this size. No arguments. |
-| device-info | 0x00 | 0x82 | Get Serial Number | read | 22 | yes | confirmed | synapse:c1e6a425@280735#130; synapse:c1e6a425@280775#Serial; synapse:c1e6a425@279893#Kr; synapse:c1e6a425@280580#yf; synapse:c1e6a425@1093877#Kr; zexrox:native/host.py:22@840f03dc | Confirmed (both sources): class, ID, read. Likely (Synapse only): name, size 22, reply layout; zexrox does not check this size. No arguments. [HYPOTHESIS] The reply is the unit's serial, so this repo keeps it out of logs and bug reports. |
-| device-info | 0x00 | 0x84 | Get Device Mode | read | 2 | no | confirmed | synapse:c1e6a425@280913#132; synapse:c1e6a425@280952#Device; synapse:c1e6a425@1094890#Ii; zexrox:native/host.py:22@840f03dc | Confirmed (both sources): class, ID, read. Likely (Synapse only): size 2. Likely (Synapse only): the name, paired with the triple where Synapse sends it (synapse:c1e6a425@1094890#Ii). Reply layout not traced. Not on the diagnostics list in this version. |
-| device-info | 0x00 | 0x86 | Get Edition Information | read | 3 | no | confirmed | synapse:c1e6a425@281121#134; synapse:c1e6a425@281159#Edition; synapse:c1e6a425@1094540#dx; zexrox:native/host.py:22@840f03dc | Confirmed (both sources): class, ID, read. Likely (Synapse only): size 3. Likely (Synapse only): the name, paired with the triple where Synapse sends it (synapse:c1e6a425@1094540#dx). Reply layout not traced. Not on the diagnostics list in this version. |
-| device-info | 0x00 | 0x87 | Get Extended Firmware Version | read | 4 | no | confirmed | synapse:c1e6a425@281203#135; synapse:c1e6a425@281225#Firmware; synapse:c1e6a425@1097158#O3; zexrox:native/host.py:22@840f03dc | Confirmed (both sources): class, ID, read. Likely (Synapse only): size 4. Likely (Synapse only): the name, paired with the triple where Synapse sends it (synapse:c1e6a425@1097158#O3). Reply layout not traced. Not on the diagnostics list in this version. |
+| device-info | 0x00 | 0x81 | Get Firmware Version | read | 2 | yes | confirmed | synapse:c1e6a425@280681#129; synapse:c1e6a425@280694#Firmware; synapse:c1e6a425@279884#K_; synapse:c1e6a425@1093638#K_; zexrox:native/host.py:22@840f03dc | Confirmed (zexrox's bridge sends it to a real 02A7): class, ID, read. Likely (Synapse only): name, size 2, reply layout (see Reply layouts); zexrox does not check this size. No arguments. |
+| device-info | 0x00 | 0x82 | Get Serial Number | read | 22 | yes | confirmed | synapse:c1e6a425@280735#130; synapse:c1e6a425@280775#Serial; synapse:c1e6a425@279893#Kr; synapse:c1e6a425@280580#yf; synapse:c1e6a425@1093877#Kr; zexrox:native/host.py:22@840f03dc | Confirmed (zexrox's bridge sends it to a real 02A7): class, ID, read. Likely (Synapse only): name, size 22, reply layout; zexrox does not check this size. No arguments. [HYPOTHESIS] The reply is the unit's serial, so this repo keeps it out of logs and bug reports. |
+| device-info | 0x00 | 0x84 | Get Device Mode | read | 2 | no | confirmed | synapse:c1e6a425@280913#132; synapse:c1e6a425@280952#Device; synapse:c1e6a425@1094890#Ii; zexrox:native/host.py:22@840f03dc | Confirmed (zexrox's bridge sends it to a real 02A7): class, ID, read. Likely (Synapse only): size 2. Likely (Synapse only): the name, paired with the triple where Synapse sends it (synapse:c1e6a425@1094890#Ii). Reply layout not traced. Not on the diagnostics list in this version. |
+| device-info | 0x00 | 0x86 | Get Edition Information | read | 3 | no | confirmed | synapse:c1e6a425@281121#134; synapse:c1e6a425@281159#Edition; synapse:c1e6a425@1094540#dx; zexrox:native/host.py:22@840f03dc | Confirmed (zexrox's bridge sends it to a real 02A7): class, ID, read. Likely (Synapse only): size 3. Likely (Synapse only): the name, paired with the triple where Synapse sends it (synapse:c1e6a425@1094540#dx). Reply layout not traced. Not on the diagnostics list in this version. |
+| device-info | 0x00 | 0x87 | Get Extended Firmware Version | read | 4 | no | confirmed | synapse:c1e6a425@281203#135; synapse:c1e6a425@281225#Firmware; synapse:c1e6a425@1097158#O3; zexrox:native/host.py:22@840f03dc | Confirmed (zexrox's bridge sends it to a real 02A7): class, ID, read. Likely (Synapse only): size 4. Likely (Synapse only): the name, paired with the triple where Synapse sends it (synapse:c1e6a425@1097158#O3). Reply layout not traced. Not on the diagnostics list in this version. |
 | device-info | 0x00 | 0x02 | Set Serial Number | write | 22 | no | likely | synapse:c1e6a425@280759#22; synapse:c1e6a425@280797#Serial; synapse:c1e6a425@279741#AQ; synapse:c1e6a425@279828#I0; synapse:c1e6a425@1094070#AQ | Synapse only; zexrox does not list it. Overwrites the serial: never send. Same class and size as 0x00:0x82; the ID differs only in bit 7 (see below). |
 | actuation | 0x02 | 0x99 | Get Multi Key Actuation Point | read | 2+5×keys | no | confirmed | synapse:c1e6a425@1045308#153; synapse:c1e6a425@1045303#80; synapse:c1e6a425@1045366#Actuation; zexrox:native/host.py:46@840f03dc#0x99 | Confirmed: class, ID, read. Likely (Synapse; zexrox's list copies it): name. Size: Synapse declares 80 but sends 2+5×keys for up to 15 keys (likely, Synapse only: synapse:c1e6a425@1259668#2); zexrox notes Synapse sends this read at more than one size and exempts it from its size check (zexrox:native/host.py:121-124@840f03dc). Reply layout not traced. Not on the diagnostics list in this version. 0498 firmware: unknown (zexrox only lists and forwards it). |
 | actuation | 0x02 | 0x19 | Set Multi Key Actuation Point | write | 2+5×keys | no | likely | synapse:c1e6a425@1045337#25; synapse:c1e6a425@1045332#80; synapse:c1e6a425@1045408#Actuation | Synapse only (likely): set ID; name paired by declaration order [HYPOTHESIS]. Size: Synapse declares 80 but sends 2+5×keys for up to 15 keys (likely, Synapse only: synapse:c1e6a425@1260228#2); zexrox checks sizes only for the reads it lists, so it never checks this set's size (zexrox:native/host.py:119-124@840f03dc). Argument layout not traced. 0498 firmware: unknown. |
@@ -662,8 +684,12 @@ reply has been captured, so this response is synthetic.
 
 ## Feature matrix
 
-One row per feature that Synapse's keyboard pages configure, with this
-document's verdict for the RZ03-0498 firmware. yes needs evidence specific to
+One row per feature, with this document's verdict for the RZ03-0498 firmware.
+Rows: every flag in the supportedFeature list of the module-5315 product-720
+configuration described in ## Control interface (`modTap`, set false, included), the features
+the zexrox README names, the Gaming Mode LED that zexrox's host drives, the
+LampArray path, and the features of the other Commands groups (actuation,
+rapid trigger, lighting, keymap, Hypershift, onboard profiles). yes needs evidence specific to
 the 0498: a zexrox capture or rewrite, or a packet that zexrox's own host
 builds and sends to a real 02A7. no means the zexrox README says the 0498
 firmware lacks the feature (zexrox:README.md:25@840f03dc#firmware). Everything
@@ -671,7 +697,11 @@ else is unknown. Forwarding is not evidence: zexrox passes most of Synapse's
 reports to the keyboard unchanged (zexrox:native/host.py:526-532@840f03dc),
 which shows that Synapse sends them, not that the 0498 implements them, and
 evidence about the 02D0 alone gives unknown. The verdicts repeat the 0498
-firmware notes of the Commands rows.
+firmware notes of the Commands rows. [HYPOTHESIS] What would settle an unknown
+in the follow-up: a read-only get answered with status 0x02 (Command
+Successful) and a matching header, then a set whose value a later get returns,
+gives yes; status 0x05 (Command Not Support, see Transaction and status) gives
+no. Nothing has been sent yet.
 
 Synapse UI area names the Commands group and commands behind each feature
 and, where there is one, the flag that enables it in the product-720 (02D0)
@@ -693,22 +723,24 @@ unknown, the cited rows, where neither source holds a 0498 reply).
 | Snap Tap, one key pair | snap-tap: Synapse sends 0x02:0xa7, 0x02:0x27 and zexrox sends 0x02:0xa1, 0x02:0x21 in their place (see Snap Tap on the 0498); 02D0 flag `snapTap` | yes | likely | zexrox:native/host.py:172-174@840f03dc; zexrox:native/host.py:178-194@840f03dc; synapse:c1e6a425@235844#snapTap |
 | Single-key Snap Tap | snap-tap: 0x02:0xac, 0x02:0x2c; 02D0 flag `singleKeySnapTap` | no | likely | zexrox:README.md:25@840f03dc#single; synapse:c1e6a425@235945#SnapTap |
 | Bottom dead-zone | actuation: 0x02:0xa8, 0x02:0x28; 02D0 flag `bottomDeadZone` | no | likely | zexrox:README.md:25@840f03dc#deadzone; synapse:c1e6a425@235897#bottomDeadZone |
-| Analog report | Synapse's Get Analog Report Mode, 0x02:0xaa, which zexrox lists (no row here) | no | likely | zexrox:README.md:25@840f03dc#report; zexrox:native/host.py:67@840f03dc#0xaa |
+| Analog report | Synapse's Get Analog Report Mode, 0x02:0xaa, which zexrox lists (no row here) | no | likely | zexrox:README.md:25@840f03dc#report; zexrox:native/host.py:67@840f03dc#0xaa; synapse:c1e6a425@1047933#170; synapse:c1e6a425@1047982#Report |
 | Analog V3 | actuation: 0x02:0xaf; 02D0 flag `analogKeyboardV3` | no | likely | zexrox:README.md:25@840f03dc#V3; synapse:c1e6a425@235812#V3 |
 | Mod-Tap | keymap: 0x02:0x9b, 0x02:0x1b; the 02D0 configuration sets `modTap` false | unknown | likely | zexrox:native/host.py:48@840f03dc#0x9b; synapse:c1e6a425@235818#modTap |
 | Dual keypress priority | snap-tap: 0x02:0xb1, 0x02:0x31; 02D0 flag `dualKeypressPriority` | unknown | likely | zexrox:native/host.py:62@840f03dc#0xb1; synapse:c1e6a425@235968#Priority |
-| Game Mode key lock | Game Mode Selection, 0x00:0xda and 0x00:0x5a, which zexrox answers on the host (no row here); 02D0 flag `gameModeSelection` | no | likely | zexrox:README.md:25@840f03dc#Game; zexrox:README.md:26@840f03dc#Windows; zexrox:native/host.py:506-525@840f03dc; synapse:c1e6a425@235915#gameModeSelection |
-| Tournament Mode | Synapse's Get Tournament Mode, 0x00:0xdb, which zexrox lists (no row here); 02D0 flag `tournamentMode` | no | likely | zexrox:README.md:25@840f03dc#Tournament; zexrox:native/host.py:68@840f03dc#0xdb; synapse:c1e6a425@235980#tournamentMode |
+| Game Mode key lock | Game Mode Selection, 0x00:0xda and 0x00:0x5a, which zexrox answers on the host (no row here); 02D0 flag `gameModeSelection`. This no is for the key lock, which zexrox keeps on the Windows side, not for the Gaming Mode LED row's yes, which rests on zexrox's own 0x03:0x00 packet for LED 8 | no | likely | zexrox:README.md:25@840f03dc#Game; zexrox:README.md:26@840f03dc#Windows; zexrox:native/host.py:506-525@840f03dc; synapse:c1e6a425@235915#gameModeSelection; synapse:c1e6a425@425918#218; synapse:c1e6a425@425947#90; synapse:c1e6a425@425998#Selection |
+| Tournament Mode | Synapse's Get Tournament Mode, 0x00:0xdb, which zexrox lists (no row here); 02D0 flag `tournamentMode` | no | likely | zexrox:README.md:25@840f03dc#Tournament; zexrox:native/host.py:68@840f03dc#0xdb; synapse:c1e6a425@235980#tournamentMode; synapse:c1e6a425@426438#219; synapse:c1e6a425@514041#Tournament |
 | Gaming Mode LED (LED id 8) | lighting: 0x03:0x00 | yes | likely | zexrox:native/host.py:355-369@840f03dc; zexrox:native/host.py:356-358@840f03dc; zexrox:native/host.py:439-453@840f03dc |
-| Lighting effects | lighting: 0x0f:0x82, 0x0f:0x02 | unknown | likely | zexrox:native/host.py:23@840f03dc#0x82; zexrox:native/host.py:19-21@840f03dc |
-| Per-key RGB (Razer custom frame) | lighting: 0x0f:0x03 | unknown | likely | synapse:c1e6a425@11304#Frame; zexrox:native/host.py:19-21@840f03dc |
+| Lighting effects | lighting: 0x0f:0x82, 0x0f:0x02; OpenRGB's Razer controller reportedly drives the 02A7's lighting; its commands were not read, so the verdict stays unknown | unknown | likely | zexrox:native/host.py:23@840f03dc#0x82; zexrox:native/host.py:19-21@840f03dc; openrgb#4418:2277952715 |
+| Per-key RGB (Razer custom frame) | lighting: 0x0f:0x03; OpenRGB's Razer controller reportedly drives the 02A7's lighting; its commands were not read, so the verdict stays unknown | unknown | likely | synapse:c1e6a425@11304#Frame; zexrox:native/host.py:19-21@840f03dc; openrgb#4418:2277952715 |
 | LampArray (standard lighting) | none: a standard HID interface, not a Synapse feature or command, listed because it is the other lighting path (see LampArray); nothing has been sent to it | unknown | likely | probe:.ai_context/knowledge/hid-02a7-macos.txt#kbd-lamparray |
-| Brightness | lighting: 0x0f:0x84, 0x0f:0x04; 02D0 flag `brightness` | unknown | likely | zexrox:native/host.py:23@840f03dc#0x84; synapse:c1e6a425@235774#brightness |
+| Brightness | lighting: 0x0f:0x84, 0x0f:0x04; 02D0 flag `brightness`; OpenRGB's Razer controller reportedly drives the 02A7's lighting; its commands were not read, so the verdict stays unknown | unknown | likely | zexrox:native/host.py:23@840f03dc#0x84; synapse:c1e6a425@235774#brightness; openrgb#4418:2277952715 |
 | Key remap | keymap: 0x02:0x8d, 0x02:0x0d, 0x02:0x9e, 0x02:0x1e | unknown | likely | zexrox:native/host.py:42@840f03dc#0x8d; zexrox:native/host.py:49@840f03dc#0x9e |
 | Hypershift | hypershift: no command; a mode byte in key assignment (see Gaps); 02D0 mapping group `hyperShiftGroup` | unknown | likely | synapse:c1e6a425@2285490#HypershiftMode; synapse:c1e6a425@236034#hyperShiftGroup |
 | Macros | macro: class 0x06; 02D0 flag `macros` | unknown | likely | zexrox:native/host.py:55@840f03dc#0x80; synapse:c1e6a425@235788#macros |
 | Onboard profiles | profile: class 0x05; the 02D0 configuration gives 5 onboard slots (`OBMSlots`) | unknown | likely | zexrox:native/host.py:30-34@840f03dc; synapse:c1e6a425@235560#OBMSlots |
+| Profile reset | profile: 0x05:0x0b Set Profile Reset; 02D0 flag `resetProfile` | unknown | likely | synapse:c1e6a425@2097455#11; synapse:c1e6a425@2097475#Reset; synapse:c1e6a425@235828#resetProfile |
 | Polling rate | polling: 0x00:0x85, 0x00:0x05, 0x00:0xc0, 0x00:0x40; 02D0 flag `highSpeedPollingRate` | unknown | likely | zexrox:native/host.py:64@840f03dc#0xc0; synapse:c1e6a425@235873#highSpeedPollingRate |
+| N-key rollover | none: no command traced; 02D0 flag `isNKeyRollOver` | unknown | likely | synapse:c1e6a425@235861#RollOver |
 
 ## Sources
 

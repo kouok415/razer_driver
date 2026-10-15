@@ -123,3 +123,8 @@ after the owner runs a read-only WebUSB probe.)
   which never resolves); chromium and openrgb citations now resolve only
   from manifest-listed files, and a chromium citation's commit must prefix
   the pinned commit, so the hash pin cannot be bypassed.]
+- [ASSUMED: (pre-M11 doc fix) R1 uses the doc's own status names ("Command
+  Successful" / "Command Not Support"); the matrix row-selection rule also
+  names the Gaming Mode LED row and the other Commands groups so existing
+  rows match a stated rule; the OpenRGB "worked" note is attached only to
+  the three Razer-protocol lighting rows, not to LampArray or LED 8.]

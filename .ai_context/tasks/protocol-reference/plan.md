@@ -317,7 +317,10 @@ synapse; chromium @<commit> is parsed but never compared and an openrgb note ID 
 appears anywhere in the folder — moved to M10a. (D8): branch base is 39eb1db but origin/master is
 5a65950 (probe page); `git merge origin/master` (no force, merge-tree was clean) before npm run
 verify so CI runs the tree verified locally. Merge first, then edit package.json (origin/master
-changes one line of it). -->
+changes one line of it).
+2026-10-15: M10 stays [in_progress] through the doc fix pass and the M11 write-back (its verify = full npm run
+verify guards both); flip M10 [done] / M11 [in_progress] only in the commit pushed after the owner approves the
+push — M11's verify needs the PR, so arming it earlier leaves the gate red with nothing to fix. -->
 
 ## M11: State write-back, PR with green CI — owner approves the merge [pending]
 - verify: `bash -c 'npm run verify && ! git ls-files | grep -qE "(^|/)(host\.py|virtual-hid\.js|main\.[0-9a-f]{8}\.js)$" && grep -q "protocol.md" .ai_context/state.md && test "$(gh pr view task/protocol-reference --json headRefOid -q .headRefOid)" = "$(git rev-parse HEAD)" && timeout 420 gh pr checks task/protocol-reference --watch --fail-fast'`
@@ -352,7 +355,12 @@ native inside Tauri per ADR-003), Open questions (can a native app claim if3), P
 native if3; LampArray report-1 read); ADRs: request-cycle recommendation, diagnostics allowlist incl. serial
 handling; brief.md correction (20 unit tests / 3 e2e; zexrox CI step). PR body: the "owner may veto" assumptions,
 and that matrix verdicts are not machine-checked. Lesson: scripts/check-context-bulk.sh is a claude-starter
-file — a starter sync could revert ADR-004's exception. -->
+file — a starter sync could revert ADR-004's exception.
+2026-10-15 (doc fix pass): the executor's claim that `usagePage` sits near the other two product-720 configs
+is FALSE (verifier + orchestrator regex: no "usage" within 600 chars of @1211158 or @2147800-2148600; first
+`usagePage` after @235150 is @2672184, default-MU code) — do not put it in state.md. Journal lessons at /wrap: a Synapse command name may not sit next to its triple (0x00:0xdb
+name only in getTournamentMode's send ~@514041) — find names via the method that sends the triple; copy.py
+diffs whole changed lines, so editing one cell of an old row re-checks the row's old text. -->
 
 ## M12: Merge and confirm the master build [pending]
 - verify: `bash -c 'test "$(gh pr view task/protocol-reference --json state -q .state)" = MERGED && M=$(gh pr view task/protocol-reference --json mergeCommit -q .mergeCommit.oid) && test "$(gh run list --workflow pages.yml --commit "$M" --json conclusion -q ".[0].conclusion")" = success'`

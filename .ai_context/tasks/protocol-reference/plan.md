@@ -70,7 +70,7 @@ Citation grammar (cells may hold several, separated by "; "):
   url:<https://...> (fact tables and matrix only; never sufficient alone in a Commands row)
 In M1 only grammar is checked; resolution against sources is M2. -->
 
-## M2: Checker source resolution, sources manifest, citation lock [in_progress]
+## M2: Checker source resolution, sources manifest, citation lock [done]
 - verify: `bash -c 'C=tools/check-protocol-doc.mjs; F=tools/fixtures; S=/tmp/claude-1000/-code-razer-driver/9f95b686-1bf0-4dae-a24a-b65ac47b4fc6/scratchpad/sources; node --test tools/ && test -s tools/sources.manifest.json && node $C --require=none --sources=$S $F/ok-minimal.md && { node $C --require=none --sources=$S $F/bad-anchor.md; test $? -eq 1; } && node $C --require=none --sources=$S $F/bad-anchor.md 2>&1 | grep -q "citation not found" && { node $C --require=none --sources=$S $F/bad-zexrox-line.md; test $? -eq 1; } && { node $C --require=none --sources=/nonexistent $F/ok-minimal.md; test $? -eq 2; } && npm run lint'`
 - risk: med
 - demo: the checker resolves every citation against the downloaded sources: a Synapse token not at its exact offset, or a zexrox line that does not contain the cited command, fails; a missing or mismatched sources directory exits 2 instead of silently passing.
@@ -97,7 +97,7 @@ against the real $S. Fixture bad-zexrox-line.md cites a real host.py line that l
 exported but unused. ok-minimal.md cites zexrox:native/host.py:22@840f03dc for 00:81/00:82 — make
 sure it resolves under --sources (line 22 must carry both IDs within ±2 lines). -->
 
-## M3: protocol.md — framing, transaction ID, status codes, request cycle [pending]
+## M3: protocol.md — framing, transaction ID, status codes, request cycle [in_progress]
 - verify: `bash -c 'S=/tmp/claude-1000/-code-razer-driver/9f95b686-1bf0-4dae-a24a-b65ac47b4fc6/scratchpad/sources; node tools/check-protocol-doc.mjs --require=sources,framing,status --sources=$S && grep -q "re-read" .ai_context/knowledge/protocol.md'`
 - risk: med
 - demo: protocol.md explains every byte of the 90-byte report, all status codes (incl. 0x00 "new command"), the transaction-ID sequence and the request cycle; every claim's citation resolves against the downloaded sources.

@@ -1,11 +1,23 @@
 // Protocol-doc checker for .ai_context/knowledge/protocol.md: section structure,
-// table rules and citation grammar. Resolving citations against the downloaded
-// sources is a separate pass (not done here).
+// table rules and citation grammar, plus citation resolution against the
+// downloaded sources (--sources) and the citation lock.
 //
 // Usage: node tools/check-protocol-doc.mjs [DOC] [--require=k,..|all|none] [--groups=g,..|all]
+//          [--sources=DIR [--only=k,..] [--write-lock]] [--manifest=FILE] [--lock=FILE]
 // Exit:  0 ok; 1 rule failures (one line each: doc:line: [section] message);
-//        2 usage or IO error (including an unknown section key or group).
-import { readFileSync } from 'node:fs'
+//        2 usage or IO error (including an unknown section key or group, and a
+//          sources directory that is missing or does not match the manifest).
+//
+// --sources=DIR first checks DIR against tools/sources.manifest.json: the zexrox
+// commit is read from DIR/zexrox/.git as files (git is never run) and every
+// DIR/synapse-web file must have its pinned sha256. It then resolves each
+// citation of the kinds in --only (default: all). The default DOC is also
+// checked against tools/citations.lock.json (--lock=FILE for another DOC): every
+// citation needs an entry, no entry may be stale, and a citation resolved now
+// must hash to its entry. --write-lock regenerates the lock from DIR.
+import { createHash } from 'node:crypto'
+import { readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs'
+import { join, resolve } from 'node:path'
 
 export const DEFAULT_DOC = '.ai_context/knowledge/protocol.md'
 export const ZEXROX_COMMIT = '840f03dc'
@@ -17,6 +29,9 @@ export const MSG = Object.freeze({
   emptySource: 'empty Source',
   citationNotFound: 'citation not found',
   missingSection: 'missing section',
+  notInLock: 'citation not in lock',
+  lockMismatch: 'citation changed since lock',
+  staleLock: 'stale lock entry',
 })
 
 export const SECTIONS = Object.freeze({
@@ -38,7 +53,13 @@ export const GROUPS = Object.freeze([
 export const CONFIDENCE = Object.freeze(['confirmed', 'likely', '[HYPOTHESIS]'])
 export const MATRIX_VALUES = Object.freeze(['yes', 'no', 'unknown'])
 
-const USAGE = 'usage: node tools/check-protocol-doc.mjs [DOC] [--require=k,..|all|none] [--groups=g,..|all]'
+export const DEFAULT_MANIFEST = 'tools/sources.manifest.json'
+export const DEFAULT_LOCK = 'tools/citations.lock.json'
+// Citation kinds that resolve against a file; url citations are only grammar-checked.
+export const RESOLVE_KINDS = Object.freeze(['zexrox', 'synapse', 'chromium', 'openrgb', 'probe'])
+
+const USAGE = 'usage: node tools/check-protocol-doc.mjs [DOC] [--require=k,..|all|none] [--groups=g,..|all] ' +
+  '[--sources=DIR [--only=k,..] [--write-lock]] [--manifest=FILE] [--lock=FILE]'
 
 const HEADERS = {
   framing: ['Offset', 'Size', 'Field', 'Meaning', 'Source', 'Confidence'],
@@ -58,27 +79,36 @@ const TOKEN = String.raw`[\w.$-]+`
 // Source-cell separator), whitespace, "|" and "#" stay excluded.
 const PROBE_KEY = String.raw`[\w.$@-]+`
 const PATH = String.raw`[\w./-]+`
+// Each form captures the fields resolution needs; FIELDS names them.
 const CITATION_FORMS = [
-  ['zexrox', new RegExp(String.raw`^zexrox:${PATH}:(\d+)(?:-(\d+))?@${ZEXROX_COMMIT}(?:#${TOKEN})?$`)],
-  ['synapse', new RegExp(String.raw`^synapse:[0-9a-f]{8}@\d+#${TOKEN}$`)],
-  ['chromium', new RegExp(String.raw`^chromium:${PATH}:\d+@[0-9a-f]{7,40}(?:#${TOKEN})?$`)],
-  ['openrgb', /^openrgb#4418:[\w-]+$/],
-  ['probe', new RegExp(String.raw`^probe:${PATH}#${PROBE_KEY}$`)],
-  ['url', /^url:https:\/\/[^\s|;<>`]+$/],
+  ['zexrox', new RegExp(String.raw`^zexrox:(${PATH}):(\d+)(?:-(\d+))?@${ZEXROX_COMMIT}(?:#(${TOKEN}))?$`)],
+  ['synapse', new RegExp(String.raw`^synapse:([0-9a-f]{8})@(\d+)#(${TOKEN})$`)],
+  ['chromium', new RegExp(String.raw`^chromium:(${PATH}):(\d+)@([0-9a-f]{7,40})(?:#(${TOKEN}))?$`)],
+  ['openrgb', /^openrgb#4418:([\w-]+)$/],
+  ['probe', new RegExp(String.raw`^probe:(${PATH})#(${PROBE_KEY})$`)],
+  ['url', /^url:(https:\/\/[^\s|;<>`]+)$/],
 ]
+const FIELDS = {
+  zexrox: (m) => ({ path: m[1], from: Number(m[2]), to: Number(m[3] ?? m[2]), token: m[4] ?? null }),
+  synapse: (m) => ({ sha: m[1], offset: Number(m[2]), token: m[3] }),
+  chromium: (m) => ({ path: m[1], line: Number(m[2]), commit: m[3], token: m[4] ?? null }),
+  openrgb: (m) => ({ note: m[1] }),
+  probe: (m) => ({ path: m[1], key: m[2] }),
+  url: (m) => ({ url: m[1] }),
+}
 const PROSE_CITATION = /(?<![\w./:#-])(?:(?:zexrox|synapse|chromium|probe|url):|openrgb#)[^\s;|,`()<>]+/g
 const PRIMARY = new Set(['zexrox', 'synapse'])
 
+// { kind, text, ...fields } or null. Fields (an absent #token is null): zexrox
+// path/from/to/token, synapse sha/offset/token, chromium path/line/commit/token,
+// openrgb note, probe path/key, url url.
 export const parseCitation = (text) => {
   for (const [kind, re] of CITATION_FORMS) {
     const m = re.exec(text)
     if (!m) continue
-    if (kind === 'zexrox') {
-      const from = Number(m[1])
-      const to = m[2] === undefined ? from : Number(m[2])
-      if (from < 1 || to < from) return null
-    }
-    return { kind, text }
+    const cite = { kind, text, ...FIELDS[kind](m) }
+    if (kind === 'zexrox' && (cite.from < 1 || cite.to < cite.from)) return null
+    return cite
   }
   return null
 }
@@ -689,6 +719,281 @@ export const checkDoc = (text, { sections = SECTION_KEYS, groups = [] } = {}) =>
 
 export const formatFailure = (doc, f) => `${doc}:${f.line}: [${f.section}] ${f.message}`
 
+// ---- citation resolution and lock ---------------------------------------------
+// Sources are data: read as bytes or text, never executed. Failure messages name
+// the doc's citation and positions only; they never echo source text.
+
+export class SourcesError extends Error {}
+
+const SYNAPSE_WINDOW = 64
+const SHA1 = /^[0-9a-f]{40}$/
+const SHA256 = /^[0-9a-f]{64}$/
+const sha256 = (data) => createHash('sha256').update(data).digest('hex')
+
+const isDir = (p) => {
+  try {
+    return statSync(p).isDirectory()
+  } catch {
+    return false
+  }
+}
+
+// base + a "/"-separated relative path; null for absolute paths and for "", ".",
+// ".." and ".git" segments, so no citation leaves its source tree.
+const safeJoin = (base, rel) => {
+  const parts = rel.split('/')
+  return parts.some((p) => p === '' || p === '.' || p === '..' || p === '.git') ? null : join(base, ...parts)
+}
+
+const readJson = (file, what) => {
+  let text
+  try {
+    text = readFileSync(file, 'utf8')
+  } catch (e) {
+    throw new SourcesError(`cannot read ${what} ${file}: ${e.code ?? e.message}`)
+  }
+  try {
+    return JSON.parse(text)
+  } catch (e) {
+    throw new SourcesError(`${what} ${file} is not valid JSON: ${e.message}`)
+  }
+}
+
+export const readLock = (file) => {
+  const lock = readJson(file, 'citation lock')
+  const valid = lock && typeof lock === 'object' && !Array.isArray(lock) &&
+    Object.values(lock).every((v) => typeof v === 'string' && SHA256.test(v))
+  if (!valid) throw new SourcesError(`citation lock ${file} must map each citation to a sha256 hex string`)
+  return lock
+}
+
+// The commit checked out in a clone, read from its .git files (git is never run).
+export const readGitHead = (repo) => {
+  const read = (rel) => {
+    try {
+      return readFileSync(join(repo, '.git', ...rel.split('/')), 'utf8').trim()
+    } catch {
+      return ''
+    }
+  }
+  const head = read('HEAD')
+  if (SHA1.test(head)) return head
+  const ref = /^ref: (refs\/[\w./-]+)$/.exec(head)?.[1]
+  if (!ref || ref.split('/').includes('..')) return null
+  const loose = read(ref)
+  if (loose) return SHA1.test(loose) ? loose : null
+  for (const line of read('packed-refs').split('\n')) {
+    const [sha, name] = line.trim().split(' ')
+    if (name === ref && SHA1.test(sha)) return sha
+  }
+  return null
+}
+
+// Checks DIR against the manifest for the kinds to resolve. Any mismatch throws
+// SourcesError (exit 2): a wrong or partial download never passes silently.
+export const verifySources = (dir, manifest, kinds = RESOLVE_KINDS) => {
+  if (!isDir(dir)) throw new SourcesError(`sources directory ${dir} not found`)
+  const src = { dir, synapse: new Map(), lines: new Map(), cps: new Map() }
+  if (kinds.includes('zexrox')) {
+    const want = manifest?.zexrox?.commit
+    if (typeof want !== 'string' || !SHA1.test(want) || !want.startsWith(ZEXROX_COMMIT)) {
+      throw new SourcesError(`the manifest's zexrox.commit must be the full ${ZEXROX_COMMIT}... commit id`)
+    }
+    const repo = join(dir, 'zexrox')
+    const got = readGitHead(repo)
+    if (got !== want) throw new SourcesError(`${repo} is at ${got ?? '(no readable .git HEAD)'}, the manifest pins ${want}`)
+  }
+  if (kinds.includes('synapse')) {
+    const files = Object.entries(manifest?.synapse ?? {})
+    if (!files.length) throw new SourcesError('the manifest lists no synapse files')
+    for (const [rel, want] of files) {
+      const file = safeJoin(join(dir, 'synapse-web'), rel)
+      if (!file || typeof want !== 'string' || !SHA256.test(want)) throw new SourcesError(`bad manifest synapse entry "${rel}"`)
+      let data
+      try {
+        data = readFileSync(file)
+      } catch (e) {
+        throw new SourcesError(`synapse file ${file} missing (${e.code ?? e.message}); the manifest pins it`)
+      }
+      const got = sha256(data)
+      if (got !== want) throw new SourcesError(`synapse file ${file} has sha256 ${got}, the manifest pins ${want}`)
+      src.synapse.set(want, file)
+    }
+  }
+  return src
+}
+
+// A file's lines (no trailing empty line), cached; null when it cannot be read.
+const linesOf = (src, file) => {
+  if (!src.lines.has(file)) {
+    let lines = null
+    try {
+      lines = readFileSync(file, 'utf8').split(/\r\n|\r|\n/)
+      if (lines.length > 1 && lines.at(-1) === '') lines.pop()
+    } catch {
+      // missing or unreadable: the caller reports the citation
+    }
+    src.lines.set(file, lines)
+  }
+  return src.lines.get(file)
+}
+
+// Code points of a Synapse file: offsets are Python str indices (as ctx.py prints them), not UTF-16.
+const codePointsOf = (src, sha) => {
+  if (!src.cps.has(sha)) src.cps.set(sha, Array.from(readFileSync(src.synapse.get(sha), 'utf8')))
+  return src.cps.get(sha)
+}
+
+const span = (from, to) => (from === to ? `line ${from}` : `lines ${from}-${to}`)
+
+const lineWindow = (lines, from, to, token, where) => {
+  if (!lines) return { error: `${where} not found` }
+  if (from < 1 || to > lines.length) return { error: `${span(from, to)} outside ${where} (${lines.length} lines)` }
+  const window = lines.slice(from - 1, to).join('\n')
+  if (!/\S/.test(window)) return { error: `${where} ${span(from, to)} is blank` }
+  if (token && !window.includes(token)) return { error: `token "${token}" not in ${where} ${span(from, to)}` }
+  return { window, lines }
+}
+
+const nearest = (cps, tok, offset) => {
+  let best = -1
+  for (let i = 0; i + tok.length <= cps.length; i++) {
+    if (cps[i] !== tok[0]) continue
+    let k = 1
+    while (k < tok.length && cps[i + k] === tok[k]) k++
+    if (k === tok.length && (best < 0 || Math.abs(i - offset) < Math.abs(best - offset))) best = i
+  }
+  return best < 0 ? 'the token does not occur in the file' : `nearest occurrence at ${best}`
+}
+
+// { window } (the text the lock hashes) or { error }; zexrox also returns the file's lines.
+const resolveCitation = (cite, src, root) => {
+  const at = (base, rel) => {
+    const file = safeJoin(base, rel)
+    return file ? linesOf(src, file) : null
+  }
+  if (cite.kind === 'zexrox') {
+    return lineWindow(at(join(src.dir, 'zexrox'), cite.path), cite.from, cite.to, cite.token, `zexrox/${cite.path}`)
+  }
+  if (cite.kind === 'chromium') {
+    return lineWindow(at(join(src.dir, 'chromium'), cite.path), cite.line, cite.line, cite.token, `chromium/${cite.path}`)
+  }
+  if (cite.kind === 'synapse') {
+    const shas = [...src.synapse.keys()].filter((s) => s.startsWith(cite.sha))
+    if (shas.length !== 1) {
+      return { error: shas.length ? `sha256 prefix ${cite.sha} is ambiguous in the manifest` : `no manifest synapse file has sha256 ${cite.sha}...` }
+    }
+    const cps = codePointsOf(src, shas[0])
+    const tok = Array.from(cite.token)
+    if (cps.slice(cite.offset, cite.offset + tok.length).join('') !== cite.token) {
+      return { error: `token "${cite.token}" is not at code-point offset ${cite.offset} (${nearest(cps, tok, cite.offset)})` }
+    }
+    return { window: cps.slice(Math.max(0, cite.offset - SYNAPSE_WINDOW), cite.offset + tok.length + SYNAPSE_WINDOW).join('') }
+  }
+  if (cite.kind === 'openrgb') {
+    const base = join(src.dir, 'openrgb-4418')
+    let names
+    try {
+      names = readdirSync(base).sort()
+    } catch {
+      return { error: `${base} not found` }
+    }
+    for (const name of names) {
+      const hit = linesOf(src, join(base, name))?.find((l) => l.includes(cite.note))
+      if (hit !== undefined) return { window: hit }
+    }
+    return { error: `note ${cite.note} not in ${base}` }
+  }
+  if (cite.kind === 'probe') {
+    const hit = at(root, cite.path)?.find((l) => l.includes(cite.key))
+    return hit === undefined ? { error: `"${cite.key}" not in repo file ${cite.path}` } : { window: hit }
+  }
+  return { error: `${cite.kind} citations do not resolve` }
+}
+
+const sectionAt = (parsed) => {
+  const keyOf = new Map(Object.entries(SECTIONS).map(([k, title]) => [title, k]))
+  return (no) => {
+    const s = parsed.sections.findLast((x) => x.no <= no)
+    return (s && keyOf.get(s.title)) ?? 'doc'
+  }
+}
+
+// A Commands row whose citations are all zexrox must show its ID as 0x<id> or
+// <cc>:<id> (any case) within each cited range +-2 lines.
+const checkCommandIds = (parsed, zexroxLines, fail) => {
+  for (const section of parsed.sections.filter((s) => s.title === SECTIONS.commands)) {
+    for (const table of section.tables.filter((t) => sameHeader(t.header, HEADERS.commands))) {
+      for (const { no, c } of rowsOf(table, HEADERS.commands)) {
+        const { cites } = parseCitationCell(c.Source)
+        if (!cites.length || !cites.every((x) => x.kind === 'zexrox')) continue
+        if (!HEX_BYTE.test(c.Class) || !HEX_BYTE.test(c.ID)) continue
+        const cc = c.Class.slice(2)
+        const id = c.ID.slice(2)
+        const re = new RegExp(`(?<![0-9a-f])(?:0x${id}|${cc}:${id})(?![0-9a-f])`, 'i')
+        for (const cite of cites) {
+          const lines = zexroxLines.get(cite.text)
+          if (!lines) continue
+          const from = Math.max(1, cite.from - 2)
+          const to = Math.min(lines.length, cite.to + 2)
+          if (!re.test(lines.slice(from - 1, to).join('\n'))) {
+            fail('commands', no, `${MSG.citationNotFound}: ${cite.text} — command ${c.Class}:${c.ID} (0x${id} or ${cc}:${id}) not within lines ${from}-${to}`)
+          }
+        }
+      }
+    }
+  }
+}
+
+// Resolves the doc's citations (outside code fences) and checks them against a lock.
+// Options: sources (DIR or null), manifest (object), kinds (to resolve), lock
+// ({ citation: sha256 } or null), root (base of probe paths). Throws SourcesError
+// when DIR does not match the manifest. Returns { failures, hashes, cited } with
+// hashes: citation -> sha256 of its resolved window.
+export const checkCitations = (text, { sources = null, manifest = null, kinds = RESOLVE_KINDS, lock = null, root = '.' } = {}) => {
+  const parsed = parseDoc(text)
+  const at = sectionAt(parsed)
+  const failures = []
+  const fail = (section, line, message) => failures.push({ section, line, message })
+  const cited = new Map()
+  for (const { no, text: line, fenced } of parsed.lines) {
+    if (fenced) continue
+    for (const cite of findProseCitations(line).cites) if (!cited.has(cite.text)) cited.set(cite.text, { cite, no })
+  }
+  const src = sources === null ? null : verifySources(sources, manifest, kinds)
+  const hashes = new Map()
+  const zexroxLines = new Map()
+  if (src) {
+    for (const [key, { cite, no }] of cited) {
+      if (!kinds.includes(cite.kind)) continue
+      const r = resolveCitation(cite, src, root)
+      if (r.error) {
+        fail(at(no), no, `${MSG.citationNotFound}: ${key} — ${r.error}`)
+        continue
+      }
+      hashes.set(key, sha256(r.window))
+      if (cite.kind === 'zexrox') zexroxLines.set(key, r.lines)
+    }
+    if (kinds.includes('zexrox')) checkCommandIds(parsed, zexroxLines, fail)
+  }
+  if (lock) {
+    for (const [key, { cite, no }] of cited) {
+      if (!RESOLVE_KINDS.includes(cite.kind)) continue
+      const resolvedNow = src !== null && kinds.includes(cite.kind)
+      if (!Object.hasOwn(lock, key)) {
+        if (!resolvedNow || hashes.has(key)) fail('lock', no, `${MSG.notInLock}: ${key} — resolve it with --sources=DIR --write-lock`)
+      } else if (hashes.has(key) && hashes.get(key) !== lock[key]) {
+        fail('lock', no, `${MSG.lockMismatch}: ${key} — the cited source text no longer matches the lock; re-check the citation, then --write-lock`)
+      }
+    }
+    for (const key of Object.keys(lock)) {
+      const entry = cited.get(key)
+      if (!entry || !RESOLVE_KINDS.includes(entry.cite.kind)) fail('lock', 1, `${MSG.staleLock}: ${key} is not cited in the doc — regenerate with --write-lock`)
+    }
+  }
+  return { failures, hashes, cited: cited.size }
+}
+
 // ---- CLI --------------------------------------------------------------------
 
 export class UsageError extends Error {}
@@ -703,14 +1008,31 @@ const parseList = (value, valid, all, noun) => {
   return items
 }
 
+const isDefaultDoc = (doc) => resolve(doc) === resolve(DEFAULT_DOC)
+const valueOf = (name, v) => {
+  if (!v) throw new UsageError(`--${name} needs a value`)
+  return v
+}
+
 export const parseArgs = (argv) => {
-  const opts = { doc: DEFAULT_DOC, sections: [...SECTION_KEYS], groups: [], help: false }
+  const opts = {
+    doc: DEFAULT_DOC, sections: [...SECTION_KEYS], groups: [], help: false,
+    sources: null, only: [...RESOLVE_KINDS], manifest: DEFAULT_MANIFEST, lock: null, writeLock: false,
+  }
   let docSeen = false
+  let onlySeen = false
   for (const arg of argv) {
     const m = /^--([a-z-]+)=(.*)$/.exec(arg)
     if (arg === '--help' || arg === '-h') opts.help = true
+    else if (arg === '--write-lock') opts.writeLock = true
     else if (m?.[1] === 'require') opts.sections = parseList(m[2], SECTION_KEYS, SECTION_KEYS, 'section key')
     else if (m?.[1] === 'groups') opts.groups = parseList(m[2], GROUPS, GROUPS.filter((g) => g !== 'other'), 'group')
+    else if (m?.[1] === 'sources') opts.sources = valueOf('sources', m[2])
+    else if (m?.[1] === 'only') {
+      opts.only = parseList(m[2], RESOLVE_KINDS, RESOLVE_KINDS, 'source kind')
+      onlySeen = true
+    } else if (m?.[1] === 'manifest') opts.manifest = valueOf('manifest', m[2])
+    else if (m?.[1] === 'lock') opts.lock = valueOf('lock', m[2])
     else if (arg.startsWith('-')) throw new UsageError(`unknown option ${arg}`)
     else if (docSeen) throw new UsageError(`unexpected argument ${arg} (one DOC only)`)
     else {
@@ -718,8 +1040,16 @@ export const parseArgs = (argv) => {
       docSeen = true
     }
   }
+  if (onlySeen && opts.sources === null) throw new UsageError('--only needs --sources=DIR')
+  if (opts.writeLock) {
+    if (opts.sources === null) throw new UsageError('--write-lock needs --sources=DIR')
+    if (onlySeen) throw new UsageError('--write-lock resolves every kind; drop --only')
+    if (opts.lock === null && !isDefaultDoc(opts.doc)) throw new UsageError('--write-lock for a DOC other than the default needs --lock=FILE')
+  }
   return opts
 }
+
+const sortedObject = (map) => Object.fromEntries([...map].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)))
 
 export const main = (argv, { stdout = process.stdout, stderr = process.stderr } = {}) => {
   let opts
@@ -742,12 +1072,37 @@ export const main = (argv, { stdout = process.stdout, stderr = process.stderr } 
     return 2
   }
   const failures = checkDoc(text, opts)
+  const lockFile = opts.lock ?? (isDefaultDoc(opts.doc) ? DEFAULT_LOCK : null)
+  let note = ''
+  if (opts.sources !== null || lockFile) {
+    try {
+      const manifest = opts.sources === null ? null : readJson(opts.manifest, 'sources manifest')
+      const lock = lockFile && !opts.writeLock ? readLock(lockFile) : null
+      const r = checkCitations(text, { sources: opts.sources, manifest, kinds: opts.only, lock })
+      failures.push(...r.failures)
+      if (opts.sources !== null) note += `; ${r.hashes.size} citation(s) resolved against ${opts.sources} (${opts.only.join(',') || 'none'})`
+      if (lock) note += `; ${r.cited} citation(s) checked against ${lockFile}`
+      if (opts.writeLock && !failures.length) {
+        try {
+          writeFileSync(lockFile, `${JSON.stringify(sortedObject(r.hashes), null, 2)}\n`)
+        } catch (e) {
+          throw new SourcesError(`cannot write ${lockFile}: ${e.code ?? e.message}`)
+        }
+        note += `; wrote ${r.hashes.size} entr${r.hashes.size === 1 ? 'y' : 'ies'} to ${lockFile}`
+      }
+    } catch (e) {
+      if (!(e instanceof SourcesError)) throw e
+      stderr.write(`check-protocol-doc: ${e.message}\n`)
+      return 2
+    }
+  }
+  failures.sort((a, b) => a.line - b.line)
   for (const f of failures) stderr.write(`${formatFailure(opts.doc, f)}\n`)
   if (failures.length) {
     stderr.write(`check-protocol-doc: ${failures.length} failure(s) in ${opts.doc}\n`)
     return 1
   }
-  stdout.write(`check-protocol-doc: ok ${opts.doc} [${opts.sections.join(',') || 'none'}]\n`)
+  stdout.write(`check-protocol-doc: ok ${opts.doc} [${opts.sections.join(',') || 'none'}]${note}\n`)
   return 0
 }
 

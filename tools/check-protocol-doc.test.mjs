@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import {
   checkDoc, findProseCitations, packetChecksum, parseArgs, parseDoc, parseCitation, parseCitationCell, splitRow,
-  SECTION_KEYS, UsageError,
+  DEFAULT_MANIFEST, RESOLVE_KINDS, SECTION_KEYS, UsageError,
 } from './check-protocol-doc.mjs'
 
 // All document text below is checker test data, not protocol claims.
@@ -202,7 +202,7 @@ test('commands: per-row rules', () => {
 test('probe citation: the plan literal probe:...#IOUSBHostInterface@3 parses in cells and prose', () => {
   const lit = 'probe:.ai_context/knowledge/hid-02a7-macos.txt#IOUSBHostInterface@3'
   assert.equal(lit, PROBE_IF(3))
-  assert.deepEqual(parseCitation(lit), { kind: 'probe', text: lit })
+  assert.deepEqual(parseCitation(lit), { kind: 'probe', text: lit, path: '.ai_context/knowledge/hid-02a7-macos.txt', key: 'IOUSBHostInterface@3' })
   for (const cell of [lit, `\`${lit}\``, `${Z}; ${lit}`, `${lit}; ${Z}`, `${lit};${S}`]) {
     const { cites, errors } = parseCitationCell(cell)
     assert.deepEqual(errors, [], cell)
@@ -301,10 +301,16 @@ test('failure lines carry the document line number', () => {
 test('argument parsing: keys, groups, usage errors', () => {
   assert.deepEqual(parseArgs([]).sections, [...SECTION_KEYS])
   assert.deepEqual(parseArgs(['--require=none']).sections, [])
-  assert.deepEqual(parseArgs(['x.md', '--require=commands,golden']), { doc: 'x.md', sections: ['commands', 'golden'], groups: [], help: false })
+  assert.deepEqual(parseArgs(['x.md', '--require=commands,golden']), {
+    doc: 'x.md', sections: ['commands', 'golden'], groups: [], help: false,
+    sources: null, only: [...RESOLVE_KINDS], manifest: DEFAULT_MANIFEST, lock: null, writeLock: false,
+  })
   assert.throws(() => parseArgs(['--require=bogus']), UsageError)
   assert.throws(() => parseArgs(['--groups=nope']), UsageError)
-  assert.throws(() => parseArgs(['--sources=/tmp']), UsageError)
+  assert.equal(parseArgs(['--sources=/tmp']).sources, '/tmp')
+  assert.deepEqual(parseArgs(['--sources=/tmp', '--only=zexrox']).only, ['zexrox'])
+  assert.throws(() => parseArgs(['--sources=']), UsageError)
+  assert.throws(() => parseArgs(['--sources=/tmp', '--only=url']), UsageError)
   assert.throws(() => parseArgs(['a.md', 'b.md']), UsageError)
 })
 

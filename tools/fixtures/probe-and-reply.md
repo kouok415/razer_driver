@@ -50,7 +50,7 @@ Diagnostics reads: 0x00:0x81, 0x00:0x82
 
 | Command | Bytes | Meaning | Source |
 |---|---|---|---|
-| 0x00:0x81 | 8-9 | major, minor | synapse:c1e6a425@1093595#major |
+| 0x00:0x81 | 8-9 | major, minor | synapse:c1e6a425@234529#major |
 | 0x00:0x82 | 8-29 | printable ASCII serial | zexrox:native/host.py:22@840f03dc; probe:.ai_context/knowledge/hid-02a7-macos.txt#IOUSBHostInterface@3 |
 
 ### Gaps

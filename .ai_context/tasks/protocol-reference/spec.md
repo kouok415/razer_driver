@@ -107,3 +107,9 @@ after the owner runs a read-only WebUSB probe.)
   its captures) to a real 02A7, though it never checks the reply status;
   the six LampArray rows are `likely` (field names and roles rest on HUT
   alone); lighting sets that zexrox only forwards stay `likely`.]
+- [ASSUMED: (M8) Hypershift is a Gaps bullet, not a command: Synapse
+  carries the layer as a mode byte in key assignment (NormalMode 0,
+  HypershiftMode 1). 0x02:0x9e/0x1e's Size column gives the sent 1+9×keys.
+  32-character Synapse names are altered by a rule stated in each row's
+  Notes (copy rule). Synapse-only keymap/macro management writes and
+  0x06:0x85 got rows (likely); triples bound to no name got none.]

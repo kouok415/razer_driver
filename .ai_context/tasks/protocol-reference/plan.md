@@ -232,7 +232,7 @@ those citations rather than re-fetching.
 argument that overwrites byte 5 (@435514, @431246); check the callers before stating a size, and grade
 name/size per drift N1 (zexrox copies them). -->
 
-## M8: protocol.md — keymap, Hypershift, macro commands [in_progress]
+## M8: protocol.md — keymap, Hypershift, macro commands [done]
 - verify: `bash -c 'S=/tmp/claude-1000/-code-razer-driver/9f95b686-1bf0-4dae-a24a-b65ac47b4fc6/scratchpad/sources; node tools/check-protocol-doc.mjs --require=sources,framing,status,commands,golden,control --groups=device-info,actuation,rapid-trigger,snap-tap,lighting,keymap,hypershift,macro --sources=$S && grep -qE "^\| *macro *\| *0x06 *\|" .ai_context/knowledge/protocol.md'`
 - risk: med
 - demo: protocol.md covers key remapping, the Hypershift layer and onboard macros, each cited; anything the sources do not pin down is visibly tagged [HYPOTHESIS] or listed under Gaps.
@@ -247,7 +247,7 @@ feature uses that pair, say so and cross-reference the actuation rows; never ass
 argument that overwrites byte 5 (@435514, @431246); check the callers before stating a size, and grade
 name/size per drift N1 (zexrox copies them). -->
 
-## M9: protocol.md — profiles, polling rate, feature matrix [pending]
+## M9: protocol.md — profiles, polling rate, feature matrix [in_progress]
 - verify: `bash -c 'S=/tmp/claude-1000/-code-razer-driver/9f95b686-1bf0-4dae-a24a-b65ac47b4fc6/scratchpad/sources; node tools/check-protocol-doc.mjs --require=all --groups=all --sources=$S && grep -q "zexrox:README.md:25@840f03dc" .ai_context/knowledge/protocol.md'`
 - risk: med
 - demo: protocol.md is complete: onboard profiles and polling-rate commands are documented, and a feature matrix marks every Synapse feature of this keyboard yes / no / unknown for the RZ03-0498 with a source.
@@ -282,7 +282,11 @@ OpenRGB's controller is read. Synapse module 436 also declares 0x0f:0x81, 0x85/0
 0x86/0x06 Fn Overlay, 0x07 Set New Chroma Frame, 0x88/0x08, 0x92-0x94/0x12-0x14, 0x17 Trigger Firmware
 Effects — no rows yet; list them as matrix "unknown" only if a Synapse feature maps to them. LampArray:
 the first hardware step for the follow-up is a read-only Get Feature of report 1 (report 3 needs a
-set of report 2 first, so it is not read-only). -->
+set of report 2 first, so it is not read-only). 
+2026-10-15 (M8): zexrox lists class-0x05 reads at host.py:30-34 (05:8a, 80, 81, 88, 8c); 05:88 is exempt
+from its size check (host.py:121-124). Module 1207 declares size-0 triples that collide with real IDs
+(0x06:0x80 @53594, 0x03:0x80 @52377) — check class 0x05 for the same. Hypershift has no command (a mode
+byte in key assignment, see Gaps): a Hypershift matrix row is "unknown". -->
 
 ## M10a: Checker pins the Chromium and OpenRGB sources by hash [pending]
 - verify: `bash -c 'S=/tmp/claude-1000/-code-razer-driver/9f95b686-1bf0-4dae-a24a-b65ac47b4fc6/scratchpad/sources; node --test tools/ >/dev/null || exit 1; T=$(mktemp -d); cp -r "$S/." "$T/"; printf x >> "$T/chromium/services/device/hid/hid_connection.cc"; node tools/check-protocol-doc.mjs --require=none --sources="$T" >/dev/null 2>&1; test $? -eq 2 || exit 1; U=$(mktemp -d); cp -r "$S/." "$U/"; printf x >> "$U/openrgb-4418/issue.json"; node tools/check-protocol-doc.mjs --require=none --sources="$U" >/dev/null 2>&1; test $? -eq 2 || exit 1; Z=$(mktemp -d); mkdir "$Z/zexrox"; cp -r "$S/zexrox/." "$Z/zexrox/"; node tools/check-protocol-doc.mjs --require=none --sources="$Z" --only=zexrox && node tools/check-protocol-doc.mjs --require=all --groups=all --sources="$S"'`

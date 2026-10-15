@@ -14,12 +14,18 @@ set -uo pipefail
 git rev-parse --git-dir >/dev/null 2>&1 || exit 0
 
 CAP=102400
+# Per-file exception (owner decision 2026-10-15, ADR-004): the cited protocol
+# reference is curated prose that outgrew 100 KB; it keeps a higher cap so a
+# pasted dump into it is still caught.
+PROTOCOL_DOC_CAP=524288
 bad=0
 while IFS= read -r f; do
   case "$f" in .ai_context/*) ;; *) continue ;; esac
+  cap="$CAP"
+  [ "$f" = ".ai_context/knowledge/protocol.md" ] && cap="$PROTOCOL_DOC_CAP"
   sz="$(git cat-file -s ":$f" 2>/dev/null || echo 0)"
-  if [ "${sz:-0}" -gt "$CAP" ]; then
-    echo "S2 violation: $f is ${sz} bytes staged (cap ${CAP})."
+  if [ "${sz:-0}" -gt "$cap" ]; then
+    echo "S2 violation: $f is ${sz} bytes staged (cap ${cap})."
     echo "  Externalize bulk: keep the artifact outside .ai_context/ (or outside"
     echo "  git) and reference it by path, commit hash, or link."
     bad=1

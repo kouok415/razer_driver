@@ -131,3 +131,20 @@ new entry that references and supersedes the old one.
 - WebHID also offers interface 1's unprotected inputs, the mouse and the
   vendor interface 5; LampArray (interface 4) is the only lighting path
   among them.
+
+## ADR-004: Higher S2 size cap for the protocol reference
+
+- **Date:** 2026-10-15
+- **Status:** Accepted (owner, 2026-10-15)
+- **Context:** `scripts/check-context-bulk.sh` caps every staged
+  `.ai_context/` file at 100 KB to catch pasted dumps (S2). The cited
+  protocol reference `knowledge/protocol.md` reached ~116 KB at M9 of
+  `protocol-reference`: curated prose and citation-dense tables, not a dump.
+- **Decision:** `knowledge/protocol.md` gets its own cap of 512 KB; every
+  other `.ai_context/` file keeps 100 KB.
+- **Alternatives considered:** moving the file to `docs/protocol.md`
+  (recommended to the owner; changes the spec's path and the checker's
+  default); trimming repeated Notes boilerplate (needs re-verification and
+  would hit the cap again as the follow-up adds facts).
+- **Consequences:** The reference can grow with the follow-up task; a
+  dump pasted into it is still caught above 512 KB.

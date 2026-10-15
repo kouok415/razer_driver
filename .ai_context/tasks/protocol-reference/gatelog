@@ -14,3 +14,6 @@
 2026-10-14T21:07:57	M2	WAITING	executor in flight since 2026-10-14T21:07:53
 2026-10-14T21:21:13	M2	PASS	bash -c 'C=tools/check-protocol-doc.mjs; F=tools/fixtures; S=/tmp/claude-1000/-code-razer-driver/9f95b686-1bf0-4dae-a24a-b65ac47b4fc6/scratchpad/sources; node --test tools/ && test -s tools/sources.manifest.json && node $C --require=none --sources=$S $F/ok-minimal.md && { node $C --require=none --sources=$S $F/bad-anchor.md; test $? -eq 1; } && node $C --require=none --sources=$S $F/bad-anchor.md 2>&1 | grep -q "citation not found" && { node $C --require=none --sources=$S $F/bad-zexrox-line.md; test $? -eq 1; } && { node $C --require=none --sources=/nonexistent $F/ok-minimal.md; test $? -eq 2; } && npm run lint'
 2026-10-14T21:21:17	M2	PAUSED	green boundary — paused after the one-time continuation prompt
+2026-10-14T21:27:53	M3	WAITING	executor in flight since 2026-10-14T21:27:50
+2026-10-14T21:36:24	M3	PASS	bash -c 'S=/tmp/claude-1000/-code-razer-driver/9f95b686-1bf0-4dae-a24a-b65ac47b4fc6/scratchpad/sources; node tools/check-protocol-doc.mjs --require=sources,framing,status --sources=$S && grep -q "re-read" .ai_context/knowledge/protocol.md'
+2026-10-14T21:36:28	M3	PAUSED	green boundary — paused after the one-time continuation prompt

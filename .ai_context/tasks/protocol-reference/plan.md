@@ -97,7 +97,7 @@ against the real $S. Fixture bad-zexrox-line.md cites a real host.py line that l
 exported but unused. ok-minimal.md cites zexrox:native/host.py:22@840f03dc for 00:81/00:82 — make
 sure it resolves under --sources (line 22 must carry both IDs within ±2 lines). -->
 
-## M3: protocol.md — framing, transaction ID, status codes, request cycle [in_progress]
+## M3: protocol.md — framing, transaction ID, status codes, request cycle [done]
 - verify: `bash -c 'S=/tmp/claude-1000/-code-razer-driver/9f95b686-1bf0-4dae-a24a-b65ac47b4fc6/scratchpad/sources; node tools/check-protocol-doc.mjs --require=sources,framing,status --sources=$S && grep -q "re-read" .ai_context/knowledge/protocol.md'`
 - risk: med
 - demo: protocol.md explains every byte of the 90-byte report, all status codes (incl. 0x00 "new command"), the transaction-ID sequence and the request cycle; every claim's citation resolves against the downloaded sources.
@@ -121,7 +121,7 @@ as a diagnostic, never reject on it (until hardware evidence says otherwise).
 Also create `## Sources` linking protocol-sources.md; doc header states citation formats and
 "Synapse targets 02D0 (superset); zexrox runs against a real 0498". Run --write-lock. -->
 
-## M4: protocol.md — device-info commands, reply layouts, golden packets, diagnostics allowlist [pending]
+## M4: protocol.md — device-info commands, reply layouts, golden packets, diagnostics allowlist [in_progress]
 - verify: `bash -c 'S=/tmp/claude-1000/-code-razer-driver/9f95b686-1bf0-4dae-a24a-b65ac47b4fc6/scratchpad/sources; node tools/check-protocol-doc.mjs --require=sources,framing,status,commands,golden --groups=device-info --sources=$S && grep -qx "Diagnostics reads: 0x00:0x81, 0x00:0x82" .ai_context/knowledge/protocol.md'`
 - risk: high
 - demo: protocol.md lists Get Firmware Version (00:81) and Get Serial (00:82) as confirmed, safe reads with exact sizes and reply layouts, plus golden packets G1 (firmware request, txId 0), G2 (serial request, txId 1) and G3 (a firmware reply) whose checksums the checker recomputes.
@@ -137,7 +137,10 @@ any golden. STOP rule: if 00:81/00:82 size or layout cannot be cited, fail and r
 Run --write-lock.
 2026-10-14 (M1): the checker enforces byte 88 = XOR 2..87 on EVERY golden block, responses included —
 compute G3's checksum correctly (it is illustrative anyway); a real captured reply with a bad checksum
-would need a documented rule change, never a silent edit. -->
+would need a documented rule change, never a silent edit.
+2026-10-14 (M3, moved from brief): status names = array J @1997872 (export @1996551); retry defaults @1997114 (5/5/10/20); connectDevice @431365; _getUSBTransferInResult token @432629.
+Also from M3: no 50 ms value exists (Synapse defaults 5/5/10/20 @1997114); status 0x00-as-pending is
+[HYPOTHESIS] (zexrox treats 0x00 as final); zexrox's own LED write counts txId 1..255 (host.py:442). -->
 
 ## M5: protocol.md — control interface: macOS interface map, protected rules, transport options [pending]
 - verify: `bash -c 'S=/tmp/claude-1000/-code-razer-driver/9f95b686-1bf0-4dae-a24a-b65ac47b4fc6/scratchpad/sources; node tools/check-protocol-doc.mjs --require=sources,framing,status,commands,golden,control --groups=device-info --sources=$S && grep -q "4418" .ai_context/knowledge/protocol.md && grep -q "probe:.ai_context/knowledge/hid-02a7-macos.txt" .ai_context/knowledge/protocol.md'`

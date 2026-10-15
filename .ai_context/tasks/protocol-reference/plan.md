@@ -247,7 +247,7 @@ feature uses that pair, say so and cross-reference the actuation rows; never ass
 argument that overwrites byte 5 (@435514, @431246); check the callers before stating a size, and grade
 name/size per drift N1 (zexrox copies them). -->
 
-## M9: protocol.md — profiles, polling rate, feature matrix [in_progress]
+## M9: protocol.md — profiles, polling rate, feature matrix [done]
 - verify: `bash -c 'S=/tmp/claude-1000/-code-razer-driver/9f95b686-1bf0-4dae-a24a-b65ac47b4fc6/scratchpad/sources; node tools/check-protocol-doc.mjs --require=all --groups=all --sources=$S && grep -q "zexrox:README.md:25@840f03dc" .ai_context/knowledge/protocol.md'`
 - risk: med
 - demo: protocol.md is complete: onboard profiles and polling-rate commands are documented, and a feature matrix marks every Synapse feature of this keyboard yes / no / unknown for the RZ03-0498 with a source.
@@ -288,7 +288,7 @@ from its size check (host.py:121-124). Module 1207 declares size-0 triples that 
 (0x06:0x80 @53594, 0x03:0x80 @52377) — check class 0x05 for the same. Hypershift has no command (a mode
 byte in key assignment, see Gaps): a Hypershift matrix row is "unknown". -->
 
-## M10a: Checker pins the Chromium and OpenRGB sources by hash [pending]
+## M10a: Checker pins the Chromium and OpenRGB sources by hash [in_progress]
 - verify: `bash -c 'S=/tmp/claude-1000/-code-razer-driver/9f95b686-1bf0-4dae-a24a-b65ac47b4fc6/scratchpad/sources; node --test tools/ >/dev/null || exit 1; T=$(mktemp -d); cp -r "$S/." "$T/"; printf x >> "$T/chromium/services/device/hid/hid_connection.cc"; node tools/check-protocol-doc.mjs --require=none --sources="$T" >/dev/null 2>&1; test $? -eq 2 || exit 1; U=$(mktemp -d); cp -r "$S/." "$U/"; printf x >> "$U/openrgb-4418/issue.json"; node tools/check-protocol-doc.mjs --require=none --sources="$U" >/dev/null 2>&1; test $? -eq 2 || exit 1; Z=$(mktemp -d); mkdir "$Z/zexrox"; cp -r "$S/zexrox/." "$Z/zexrox/"; node tools/check-protocol-doc.mjs --require=none --sources="$Z" --only=zexrox && node tools/check-protocol-doc.mjs --require=all --groups=all --sources="$S"'`
 - risk: med
 - demo: altering any saved Chromium or OpenRGB source file now makes the checker reject the sources directory (exit 2), as it already does for zexrox and Synapse; a zexrox-only directory (the CI mode) still passes.

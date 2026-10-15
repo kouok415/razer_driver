@@ -113,3 +113,9 @@ after the owner runs a read-only WebUSB probe.)
   32-character Synapse names are altered by a rule stated in each row's
   Notes (copy rule). Synapse-only keymap/macro management writes and
   0x06:0x85 got rows (likely); triples bound to no name got none.]
+- [ASSUMED: (M9) every feature-matrix row is `likely` (each verdict rests
+  on one source); "Synapse UI area" means the Commands group, commands and
+  the module-5315 product-720 config flag, not a Synapse screen; the matrix
+  adds a "Gaming Mode LED (LED id 8)" = yes row and splits analog report
+  from Analog V3 as zexrox's README does; 0x05:0x8a is confirmed for
+  class, ID and read like the other zexrox-listed reads.]

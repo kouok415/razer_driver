@@ -529,6 +529,38 @@ priority choice.
 | macro | 0x06 | 0x8c | Get Macro Name With Offset | read | 80 | no | confirmed | synapse:c1e6a425@2575542#140; synapse:c1e6a425@2575537#80; synapse:c1e6a425@2575589#Name; zexrox:native/host.py:39@840f03dc#0x8c | Confirmed: class, ID, read. Likely (Synapse; zexrox's list copies it): size 80, name. Callers not traced. Reply layout not traced. Not on the diagnostics list in this version. 0498 firmware: unknown (zexrox only lists and forwards it). |
 | macro | 0x06 | 0x0c | Set Macro Name With Offset | write | 80 | no | likely | synapse:c1e6a425@2575571#12; synapse:c1e6a425@2575566#80; synapse:c1e6a425@2575620#Name | Synapse only (likely): set ID, size 80 as declared (the size Synapse sends is not traced); name paired by declaration order [HYPOTHESIS]. Argument layout not traced. Changes onboard memory ([HYPOTHESIS], from the name). 0498 firmware: unknown. |
 | macro | 0x06 | 0x8e | Get Macro Storage Info | read | 14 | no | confirmed | synapse:c1e6a425@2575715#142; synapse:c1e6a425@2575710#14; synapse:c1e6a425@2575762#Storage; zexrox:native/host.py:57@840f03dc#0x8e | Confirmed: class, ID, read. Likely (Synapse; zexrox's list copies it): size 14, name. Synapse also declares a size-14 0x06:0x0e triple beside it that no name binds (synapse:c1e6a425@2575746#14). Callers not traced. Reply layout not traced. Not on the diagnostics list in this version. 0498 firmware: unknown (zexrox only lists and forwards it). |
+| profile | 0x05 | 0x80 | Get Number of Profiles | read | 1 | no | confirmed | synapse:c1e6a425@2096805#128; synapse:c1e6a425@2096801#1; synapse:c1e6a425@2096818#Number; synapse:c1e6a425@469817#sendCommand; zexrox:native/host.py:31@840f03dc#0x80 | Confirmed: class, ID, read. Likely (Synapse; zexrox's list copies it): size 1, name; Synapse passes no size argument, so it sends the declared size. Reply layout not traced. Not on the diagnostics list in this version. 0498 firmware: unknown (zexrox only lists and forwards it). |
+| profile | 0x05 | 0x81 | Get Profiles ID List | read | 80 | no | confirmed | synapse:c1e6a425@2096861#129; synapse:c1e6a425@2096856#80; synapse:c1e6a425@2096874#Profiles; synapse:c1e6a425@470035#sendCommand; zexrox:native/host.py:32@840f03dc#0x81 | Confirmed: class, ID, read. Likely (Synapse; zexrox's list copies it): size 80, name; sent at the declared size (no size argument). Reply layout not traced. Not on the diagnostics list in this version. 0498 firmware: unknown (zexrox only lists and forwards it). |
+| profile | 0x05 | 0x02 | Create New Profile | write | 1 | no | likely | synapse:c1e6a425@2096914#2; synapse:c1e6a425@2096910#1; synapse:c1e6a425@2096921#Create; synapse:c1e6a425@471242#sendCommand | Synapse only (likely): ID, write, size 1, name; sent at the declared size (no size argument). Argument layout not traced. Changes onboard memory ([HYPOTHESIS], from the name). 0498 firmware: unknown. |
+| profile | 0x05 | 0x03 | Set Delete Profile | write | 1 | no | likely | synapse:c1e6a425@2096963#3; synapse:c1e6a425@2096959#1; synapse:c1e6a425@2096974#Delete; synapse:c1e6a425@471500#sendCommand | Synapse only (likely): ID, write, size 1, name; sent at the declared size (no size argument). Argument layout not traced. Removes a profile from onboard memory ([HYPOTHESIS], from the name). 0498 firmware: unknown. |
+| profile | 0x05 | 0x84 | Get Active Profile ID | read | 1 | no | confirmed | synapse:c1e6a425@2097012#132; synapse:c1e6a425@2097008#1; synapse:c1e6a425@2097051#Active; synapse:c1e6a425@471621#sendCommand; zexrox:native/host.py:63@840f03dc#0x84 | Confirmed: class, ID, read. Likely (Synapse; zexrox's list copies it): size 1, name; sent at the declared size (no size argument). Reply layout not traced. Not on the diagnostics list in this version. 0498 firmware: unknown (zexrox only lists and forwards it). |
+| profile | 0x05 | 0x04 | Set Active Profile ID | write | 1 | no | likely | synapse:c1e6a425@2097040#4; synapse:c1e6a425@2097036#1; synapse:c1e6a425@2097077#Active; synapse:c1e6a425@471903#sendCommand | Synapse only (likely): set ID, size 1, name; sent at the declared size (no size argument). Argument layout not traced. Switches the active onboard profile; whether the choice is kept in onboard memory is not traced ([HYPOTHESIS], from the name). 0498 firmware: unknown. |
+| profile | 0x05 | 0x88 | Get Profile Name With Offset | read | 80 | no | confirmed | synapse:c1e6a425@2097222#136; synapse:c1e6a425@2097217#80; synapse:c1e6a425@2097271#Name; synapse:c1e6a425@404689#mp; synapse:c1e6a425@404699#s; synapse:c1e6a425@470248#M; zexrox:native/host.py:33@840f03dc#0x88; zexrox:native/host.py:121-124@840f03dc | Confirmed: class, ID, read. Likely (Synapse; zexrox's list copies it): name. Size: Synapse declares 80; its callee hands its fifth argument to sendCommand as the size (synapse:c1e6a425@404699#s), and the method getProfileName passes its own optional fourth argument there, -1 (keep the declared 80) when it is left out (synapse:c1e6a425@470248#M). The callers of getProfileName were not traced, so the other sizes Synapse sends are unknown; zexrox skips its size check for this read because Synapse uses more than one size for it (zexrox:native/host.py:121-124@840f03dc). Arguments (likely, Synapse only): data[0] is getProfileName's first argument and data[1] to data[4] hold two 2-byte values built by helpers not traced; the reply decoder that follows names reply data[0] profileId and data[1] to data[2] offset (synapse:c1e6a425@404689#mp). Not on the diagnostics list in this version. 0498 firmware: unknown (zexrox only lists and forwards it). |
+| profile | 0x05 | 0x08 | Set Profile Name With Offset | write | 80 | no | likely | synapse:c1e6a425@2097252#8; synapse:c1e6a425@2097247#80; synapse:c1e6a425@2097304#Name; synapse:c1e6a425@470900#sendCommand | Synapse only (likely): set ID, size 80 as declared; setProfileName passes its optional fifth argument as the size, -1 (which keeps the declared 80) when omitted, and its callers are not traced (synapse:c1e6a425@470940#l); name paired with the triple where Synapse sends it. Argument layout not traced. Changes onboard memory ([HYPOTHESIS], from the name). 0498 firmware: unknown. |
+| profile | 0x05 | 0x8a | Get Max Profiles Supported | read | 1 | no | confirmed | synapse:c1e6a425@2097395#138; synapse:c1e6a425@2097391#1; synapse:c1e6a425@2097409#Max; synapse:c1e6a425@469589#sendCommand; zexrox:native/host.py:30@840f03dc#0x8a; zexrox:native/host.py:25-28@840f03dc | Confirmed: class, ID, read. Likely (Synapse; zexrox's list copies it): size 1, name; sent at the declared size (no size argument). zexrox notes that Synapse's profile setup sends this read before asking for the profile count and list, and that its 0.1.3 build stopped the size-1 request before the keyboard could reply; this version lists size 1 and forwards it (zexrox:native/host.py:25-28@840f03dc). No 0498 reply is recorded. Reply layout not traced. Not on the diagnostics list in this version. 0498 firmware: unknown. |
+| profile | 0x05 | 0x0b | Set Profile Reset | write | 1 | no | likely | synapse:c1e6a425@2097455#11; synapse:c1e6a425@2097451#1; synapse:c1e6a425@2097475#Reset; synapse:c1e6a425@405198#sendCommand | Synapse only (likely): ID, write, size 1, name; sent at the declared size (no size argument). Its ID is not Get Max Profiles Supported's with bit 7 cleared: Synapse's profile module declares no 0x05:0x0a. Argument layout not traced. Resets onboard profile data ([HYPOTHESIS], from the name). 0498 firmware: unknown. |
+| profile | 0x05 | 0x8c | Get Profile Color | read | 4 | no | confirmed | synapse:c1e6a425@2097504#140; synapse:c1e6a425@2097500#4; synapse:c1e6a425@2097552#Color; synapse:c1e6a425@472256#sendCommand; zexrox:native/host.py:34@840f03dc#0x8c | Confirmed: class, ID, read. Likely (Synapse; zexrox's list copies it): size 4, name; sent at the declared size (no size argument). Reply layout not traced. Not on the diagnostics list in this version. 0498 firmware: unknown (zexrox only lists and forwards it). |
+| profile | 0x05 | 0x0c | Set Profile Color | write | 4 | no | likely | synapse:c1e6a425@2097532#12; synapse:c1e6a425@2097528#4; synapse:c1e6a425@2097574#Color; synapse:c1e6a425@472663#sendCommand | Synapse only (likely): set ID, size 4, name; sent at the declared size (no size argument). Argument layout not traced. Changes onboard memory ([HYPOTHESIS], from the name). 0498 firmware: unknown. |
+| polling | 0x00 | 0x85 | Get Device Polling Period | read | 1 | no | likely | synapse:c1e6a425@281007#133; synapse:c1e6a425@281003#1; synapse:c1e6a425@281053#Polling; synapse:c1e6a425@1096496#YT; synapse:c1e6a425@1096197#RATE_1000Hz | Synapse only (likely): class, ID, read, size 1, name; zexrox does not list it. Synapse sends it with no data and no size argument (synapse:c1e6a425@1096496#YT) and maps reply data[0] through a rate enum to 1000, 500, 333, 250, 200, 125 or 100 Hz, 100 for any other value (synapse:c1e6a425@1096197#RATE_1000Hz); the enum's byte values are not traced (see Gaps). Not on the diagnostics list in this version. 0498 firmware: unknown. |
+| polling | 0x00 | 0x05 | Set Device Polling Period | write | 1 | no | likely | synapse:c1e6a425@281035#5; synapse:c1e6a425@281031#1; synapse:c1e6a425@281083#Polling; synapse:c1e6a425@1097090#uu; synapse:c1e6a425@1096716#RATE_1000Hz | Synapse only (likely): ID, write, size 1, name; sent at the declared size (no size argument). data[0] is the rate-enum value for 1000, 500, 333, 250, 200, 125 or 100 Hz; Synapse refuses any other rate before sending (synapse:c1e6a425@1096716#RATE_1000Hz, synapse:c1e6a425@1097090#uu). Whether the rate is kept in onboard memory is not traced ([HYPOTHESIS] that it is). 0498 firmware: unknown. |
+| polling | 0x00 | 0xc0 | Get USB High-Speed Polling Period | read | 2 | no | confirmed | synapse:c1e6a425@283131#192; synapse:c1e6a425@283127#2; synapse:c1e6a425@283182#Speed; synapse:c1e6a425@1100312#VE; synapse:c1e6a425@1099936#RATE_8000Hz; zexrox:native/host.py:64@840f03dc#0xc0 | Confirmed: class, ID, read. Likely (Synapse; zexrox's list copies it): size 2, name. Name: Synapse writes High Speed without the hyphen; this doc adds it so that it does not repeat a source string of 32 or more characters. Synapse writes its one argument to data[0] and sends the declared size (synapse:c1e6a425@1100312#VE); its decoder names reply data[0] profileId and maps data[1] through a second rate enum to 8000, 4000, 2000, 1000, 500, 250 or 125 Hz, 8000 for any other value (synapse:c1e6a425@1099936#RATE_8000Hz). Not on the diagnostics list in this version. 0498 firmware: unknown (zexrox only lists and forwards it). |
+| polling | 0x00 | 0x40 | Set USB High-Speed Polling Period | write | 2 | no | likely | synapse:c1e6a425@283160#64; synapse:c1e6a425@283156#2; synapse:c1e6a425@283221#Speed; synapse:c1e6a425@1100920#tg; synapse:c1e6a425@1100536#RATE_8000Hz; synapse:c1e6a425@1100883#s | Synapse only (likely): ID, write, size 2, name (hyphen added as for 0x00:0xc0); sent at the declared size (no size argument). data[0] is Synapse's first argument and data[1] the rate-enum value for 8000, 4000, 2000, 1000, 500, 250 or 125 Hz; Synapse refuses any other rate (synapse:c1e6a425@1100536#RATE_8000Hz, synapse:c1e6a425@1100883#s, synapse:c1e6a425@1100920#tg). [HYPOTHESIS] data[0] is a profile id, as the get's decoder names it, so the rate is kept per onboard profile. 0498 firmware: unknown. |
+
+Profile and polling rows. Synapse declares the class 0x05 triples and names in
+module 74465, which exports each under a short alias
+(synapse:c1e6a425@2096559#AG). The module that imports it
+(synapse:c1e6a425@404238#74465) sends every profile command by passing a
+triple alias and a name alias together, and that call pairs each class 0x05
+name in the rows with its triple (for example
+synapse:c1e6a425@469817#sendCommand). The four polling triples and names are
+in module 11880 (synapse:c1e6a425@279837#IL,
+synapse:c1e6a425@279902#LF), and a module that imports it
+(synapse:c1e6a425@1093540#11880) sends them the same way. Get and Set Profile
+Name With Offset pass a size argument (see their rows); the other calls send
+the declared size. The class 0x05 reads zexrox lists are confirmed on the same
+terms as the class 0x02 reads (zexrox:native/host.py:29-34@840f03dc), and so
+is 0x00:0xc0 (zexrox:native/host.py:64@840f03dc#0xc0). Get Device Polling
+Period and all eight sets in these groups appear only in Synapse.
 
 Set Serial Number (0x00:0x02) and Get Serial Number (0x00:0x82) share class
 and size and differ in one bit of byte 7, so one flipped bit turns the safe
@@ -563,6 +595,9 @@ below is byte 8 + n of the reply.
 - keymap: function ids and the 5 data bytes of a key assignment are not decoded here; Synapse's parser names function ids through a module 82407 table and keeps the data bytes raw — synapse:c1e6a425@1252344#functionIdEnum; synapse:c1e6a425@1247402#82407
 - hypershift: Synapse declares no Hypershift command; its key-assignment calls carry the layer as a mode byte (byte 2 of the 0x02:0x8d reply, the second byte of each 9-byte slot of 0x02:0x9e and 0x02:0x1e), which its parser looks up in a module 82407 table that maps NormalMode to 0 and HypershiftMode to 1; whether the 0498 keeps a Hypershift layer is not captured — synapse:c1e6a425@1252278#mode; synapse:c1e6a425@1264117#functionId; synapse:c1e6a425@1247402#82407; synapse:c1e6a425@2283139#zN; synapse:c1e6a425@2285490#HypershiftMode
 - macro: the macro data format (what 0x06:0x09 carries) and how a key assignment selects a macro are not traced — synapse:c1e6a425@2575253#9; synapse:c1e6a425@401924#92412
+- profile: Synapse's battery module 18994 declares size-0 class 0x05 triples at the profile IDs 0x80, 0x81, 0x84, 0x88, 0x8a and 0x8c, the first named Get Battery List, while a search finds no class 0x05 triple in module 1207; this document reads class 0x05 through module 74465, the one the transport code imports, and which device module the product 720 page uses for a keyboard is not traced — synapse:c1e6a425@525086#128; synapse:c1e6a425@525098#Battery; synapse:c1e6a425@525119#129; synapse:c1e6a425@525237#132; synapse:c1e6a425@525484#136; synapse:c1e6a425@525584#138; synapse:c1e6a425@525787#140; synapse:c1e6a425@404238#74465
+- profile: module 74465 also declares 0x05:0x85 with 0x05:0x05 (size 80), 0x05:0x87 with 0x05:0x07 (size 1) and 0x05:0x89 with 0x05:0x09 (size 2) without binding a name to them, so they have no rows — synapse:c1e6a425@2097120#133; synapse:c1e6a425@2097171#135; synapse:c1e6a425@2097345#137
+- polling: the byte values behind Synapse's two rate enums are not traced, so neither polling read's reply nor either set's argument can be encoded from this document yet — synapse:c1e6a425@1096197#RATE_1000Hz; synapse:c1e6a425@1099936#RATE_8000Hz
 
 ## Golden packets
 
@@ -624,6 +659,56 @@ size 0x02, class and ID repeated, data[0] = 0x01 (major), data[1] = 0x02
 0x80) although neither source checks a reply's checksum; what a real 02A7
 puts in bytes 2 to 4 and 88 of a reply is not established. No real 02A7
 reply has been captured, so this response is synthetic.
+
+## Feature matrix
+
+One row per feature that Synapse's keyboard pages configure, with this
+document's verdict for the RZ03-0498 firmware. yes needs evidence specific to
+the 0498: a zexrox capture or rewrite, or a packet that zexrox's own host
+builds and sends to a real 02A7. no means the zexrox README says the 0498
+firmware lacks the feature (zexrox:README.md:25@840f03dc#firmware). Everything
+else is unknown. Forwarding is not evidence: zexrox passes most of Synapse's
+reports to the keyboard unchanged (zexrox:native/host.py:526-532@840f03dc),
+which shows that Synapse sends them, not that the 0498 implements them, and
+evidence about the 02D0 alone gives unknown. The verdicts repeat the 0498
+firmware notes of the Commands rows.
+
+Synapse UI area names the Commands group and commands behind each feature
+and, where there is one, the flag that enables it in the product-720 (02D0)
+configuration in Synapse module 5315 (synapse:c1e6a425@235199#720,
+synapse:c1e6a425@235774#brightness). It is not
+the title of a Synapse screen; the screens were not traced. That configuration
+lists what Synapse offers on the 02D0, not what the 0498 supports. Modules
+41782 and 78193 hold two more product-720 configurations with shorter feature
+lists (synapse:c1e6a425@1211158#720, synapse:c1e6a425@2150414#720); which one
+the page uses, and which device module it loads, is not traced. Confidence is likely
+on every row: each verdict rests on one source (zexrox for yes and no; for
+unknown, the cited rows, where neither source holds a 0498 reply).
+
+| Feature | Synapse UI area | RZ03-0498 | Confidence | Source |
+|---|---|---|---|---|
+| Per-key actuation | actuation: 0x02:0x99, 0x02:0x19 | unknown | likely | zexrox:native/host.py:46@840f03dc#0x99; zexrox:native/host.py:526-532@840f03dc |
+| Rapid Trigger | rapid-trigger: 0x02:0x9a, 0x02:0x1a | unknown | likely | zexrox:native/host.py:47@840f03dc#0x9a; zexrox:native/host.py:526-532@840f03dc |
+| Continuous Rapid Trigger | rapid-trigger: 0x02:0xa0, 0x02:0x20 | unknown | likely | zexrox:native/host.py:66@840f03dc#0xa0 |
+| Snap Tap, one key pair | snap-tap: Synapse sends 0x02:0xa7, 0x02:0x27 and zexrox sends 0x02:0xa1, 0x02:0x21 in their place (see Snap Tap on the 0498); 02D0 flag `snapTap` | yes | likely | zexrox:native/host.py:172-174@840f03dc; zexrox:native/host.py:178-194@840f03dc; synapse:c1e6a425@235844#snapTap |
+| Single-key Snap Tap | snap-tap: 0x02:0xac, 0x02:0x2c; 02D0 flag `singleKeySnapTap` | no | likely | zexrox:README.md:25@840f03dc#single; synapse:c1e6a425@235945#SnapTap |
+| Bottom dead-zone | actuation: 0x02:0xa8, 0x02:0x28; 02D0 flag `bottomDeadZone` | no | likely | zexrox:README.md:25@840f03dc#deadzone; synapse:c1e6a425@235897#bottomDeadZone |
+| Analog report | Synapse's Get Analog Report Mode, 0x02:0xaa, which zexrox lists (no row here) | no | likely | zexrox:README.md:25@840f03dc#report; zexrox:native/host.py:67@840f03dc#0xaa |
+| Analog V3 | actuation: 0x02:0xaf; 02D0 flag `analogKeyboardV3` | no | likely | zexrox:README.md:25@840f03dc#V3; synapse:c1e6a425@235812#V3 |
+| Mod-Tap | keymap: 0x02:0x9b, 0x02:0x1b; the 02D0 configuration sets `modTap` false | unknown | likely | zexrox:native/host.py:48@840f03dc#0x9b; synapse:c1e6a425@235818#modTap |
+| Dual keypress priority | snap-tap: 0x02:0xb1, 0x02:0x31; 02D0 flag `dualKeypressPriority` | unknown | likely | zexrox:native/host.py:62@840f03dc#0xb1; synapse:c1e6a425@235968#Priority |
+| Game Mode key lock | Game Mode Selection, 0x00:0xda and 0x00:0x5a, which zexrox answers on the host (no row here); 02D0 flag `gameModeSelection` | no | likely | zexrox:README.md:25@840f03dc#Game; zexrox:README.md:26@840f03dc#Windows; zexrox:native/host.py:506-525@840f03dc; synapse:c1e6a425@235915#gameModeSelection |
+| Tournament Mode | Synapse's Get Tournament Mode, 0x00:0xdb, which zexrox lists (no row here); 02D0 flag `tournamentMode` | no | likely | zexrox:README.md:25@840f03dc#Tournament; zexrox:native/host.py:68@840f03dc#0xdb; synapse:c1e6a425@235980#tournamentMode |
+| Gaming Mode LED (LED id 8) | lighting: 0x03:0x00 | yes | likely | zexrox:native/host.py:355-369@840f03dc; zexrox:native/host.py:356-358@840f03dc; zexrox:native/host.py:439-453@840f03dc |
+| Lighting effects | lighting: 0x0f:0x82, 0x0f:0x02 | unknown | likely | zexrox:native/host.py:23@840f03dc#0x82; zexrox:native/host.py:19-21@840f03dc |
+| Per-key RGB (Razer custom frame) | lighting: 0x0f:0x03 | unknown | likely | synapse:c1e6a425@11304#Frame; zexrox:native/host.py:19-21@840f03dc |
+| LampArray (standard lighting) | none: a standard HID interface, not a Synapse feature or command, listed because it is the other lighting path (see LampArray); nothing has been sent to it | unknown | likely | probe:.ai_context/knowledge/hid-02a7-macos.txt#kbd-lamparray |
+| Brightness | lighting: 0x0f:0x84, 0x0f:0x04; 02D0 flag `brightness` | unknown | likely | zexrox:native/host.py:23@840f03dc#0x84; synapse:c1e6a425@235774#brightness |
+| Key remap | keymap: 0x02:0x8d, 0x02:0x0d, 0x02:0x9e, 0x02:0x1e | unknown | likely | zexrox:native/host.py:42@840f03dc#0x8d; zexrox:native/host.py:49@840f03dc#0x9e |
+| Hypershift | hypershift: no command; a mode byte in key assignment (see Gaps); 02D0 mapping group `hyperShiftGroup` | unknown | likely | synapse:c1e6a425@2285490#HypershiftMode; synapse:c1e6a425@236034#hyperShiftGroup |
+| Macros | macro: class 0x06; 02D0 flag `macros` | unknown | likely | zexrox:native/host.py:55@840f03dc#0x80; synapse:c1e6a425@235788#macros |
+| Onboard profiles | profile: class 0x05; the 02D0 configuration gives 5 onboard slots (`OBMSlots`) | unknown | likely | zexrox:native/host.py:30-34@840f03dc; synapse:c1e6a425@235560#OBMSlots |
+| Polling rate | polling: 0x00:0x85, 0x00:0x05, 0x00:0xc0, 0x00:0x40; 02D0 flag `highSpeedPollingRate` | unknown | likely | zexrox:native/host.py:64@840f03dc#0xc0; synapse:c1e6a425@235873#highSpeedPollingRate |
 
 ## Sources
 

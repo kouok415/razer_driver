@@ -224,7 +224,7 @@ D2 "agrees with each point" is false for interface 2 — the mouse was offered w
 IsAlwaysProtected protects Mouse input; say so and add an open question; D3 cite the closing event
 openrgb#4418:01baff8aec64613fdaab9bf31fed650f89d21e70, not 2278000670 (a "mentioned in" note); also
 restore the open question "why does macOS bind no driver to interface 3" and bump protocol.md's
-"Last updated" line. state.md and an ADR-003 erratum were already fixed (uncommitted).
+"Last updated" line. state.md and an ADR-003 erratum were already fixed. ALL DONE 2026-10-15 (fix commit after 2cae4db).
 2026-10-14 (M5): owner dump gives if4 feature sizes id1..6 = 22,2,28,50,9,1 B (max 51); WebHID treats
 page 0x59 as unprotected (chromium hid_report_utils.cc:45 @1aeca202, already in manifest) — reuse
 those citations rather than re-fetching. 

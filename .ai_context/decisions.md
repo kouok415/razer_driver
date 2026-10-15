@@ -117,3 +117,17 @@ new entry that references and supersedes the old one.
   simulator moves behind the native transport boundary. Whether the
   GitHub Pages build stays (e.g. probe page, lighting-only tool) is decided
   when that task is planned.
+
+### ADR-003 erratum (2026-10-15)
+
+- "No browser path reaches interface 3" holds on macOS. On Windows hidapi
+  opens interface 3 (zexrox), and a Chromium build before M148 or with the
+  protected-class control-transfer flag off might allow device-recipient
+  class reads ([HYPOTHESIS], untested; `knowledge/protocol.md` § Control
+  interface).
+- Observed: macOS binds no HID driver to interface 3 and WebHID did not
+  offer it. That the missing interrupt-IN endpoint causes this is
+  [HYPOTHESIS].
+- WebHID also offers interface 1's unprotected inputs, the mouse and the
+  vendor interface 5; LampArray (interface 4) is the only lighting path
+  among them.

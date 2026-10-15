@@ -119,3 +119,7 @@ after the owner runs a read-only WebUSB probe.)
   adds a "Gaming Mode LED (LED id 8)" = yes row and splits analog report
   from Analog V3 as zexrox's README does; 0x05:0x8a is confirmed for
   class, ID and read like the other zexrox-listed reads.]
+- [ASSUMED: (M10a) the hut source is not hash-checked (cited only as url:,
+  which never resolves); chromium and openrgb citations now resolve only
+  from manifest-listed files, and a chromium citation's commit must prefix
+  the pinned commit, so the hash pin cannot be bypassed.]

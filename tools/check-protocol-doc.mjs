@@ -8,15 +8,20 @@
 //        2 usage or IO error (including an unknown section key or group, and a
 //          sources directory that is missing or does not match the manifest).
 //
-// --sources=DIR first checks DIR against tools/sources.manifest.json: the zexrox
-// commit is read from DIR/zexrox/.git as files (git is never run) and every
-// DIR/synapse-web file must have its pinned sha256. It then resolves each
-// citation of the kinds in --only (default: all). The default DOC is also
-// checked against tools/citations.lock.json (--lock=FILE for another DOC): every
+// --sources=DIR first checks DIR against tools/sources.manifest.json for the kinds
+// in --only (default: all): the zexrox commit is read from DIR/zexrox/.git as
+// files (git is never run); chromium.commit must be a full commit id; every file
+// the manifest lists under synapse, chromium and openrgb-4418 must have its
+// pinned sha256 in DIR/synapse-web, DIR/chromium or DIR/openrgb-4418. The hut
+// entry is not checked: url citations do not resolve. It then resolves each
+// citation of those kinds; chromium and openrgb citations read pinned files
+// only, and a chromium citation's commit must prefix chromium.commit. The
+// default DOC is also checked against tools/citations.lock.json (--lock=FILE
+// for another DOC): every
 // citation needs an entry, no entry may be stale, and a citation resolved now
 // must hash to its entry. --write-lock regenerates the lock from DIR.
 import { createHash } from 'node:crypto'
-import { readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs'
+import { readFileSync, statSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 
 export const DEFAULT_DOC = '.ai_context/knowledge/protocol.md'
@@ -789,11 +794,31 @@ export const readGitHead = (repo) => {
   return null
 }
 
+// Every file the manifest lists for a kind must be under base with its pinned
+// sha256 (else SourcesError). Returns [[sha256, file]] in manifest order.
+const pinnedFiles = (base, kind, listed) => {
+  const files = Object.entries(listed ?? {})
+  if (!files.length) throw new SourcesError(`the manifest lists no ${kind} files`)
+  return files.map(([rel, want]) => {
+    const file = safeJoin(base, rel)
+    if (!file || typeof want !== 'string' || !SHA256.test(want)) throw new SourcesError(`bad manifest ${kind} entry "${rel}"`)
+    let data
+    try {
+      data = readFileSync(file)
+    } catch (e) {
+      throw new SourcesError(`${kind} file ${file} missing (${e.code ?? e.message}); the manifest pins it`)
+    }
+    const got = sha256(data)
+    if (got !== want) throw new SourcesError(`${kind} file ${file} has sha256 ${got}, the manifest pins ${want}`)
+    return [want, file]
+  })
+}
+
 // Checks DIR against the manifest for the kinds to resolve. Any mismatch throws
 // SourcesError (exit 2): a wrong or partial download never passes silently.
 export const verifySources = (dir, manifest, kinds = RESOLVE_KINDS) => {
   if (!isDir(dir)) throw new SourcesError(`sources directory ${dir} not found`)
-  const src = { dir, synapse: new Map(), lines: new Map(), cps: new Map() }
+  const src = { dir, synapse: new Map(), chromium: { commit: '', files: new Set() }, openrgb: [], lines: new Map(), cps: new Map() }
   if (kinds.includes('zexrox')) {
     const want = manifest?.zexrox?.commit
     if (typeof want !== 'string' || !SHA1.test(want) || !want.startsWith(ZEXROX_COMMIT)) {
@@ -804,21 +829,16 @@ export const verifySources = (dir, manifest, kinds = RESOLVE_KINDS) => {
     if (got !== want) throw new SourcesError(`${repo} is at ${got ?? '(no readable .git HEAD)'}, the manifest pins ${want}`)
   }
   if (kinds.includes('synapse')) {
-    const files = Object.entries(manifest?.synapse ?? {})
-    if (!files.length) throw new SourcesError('the manifest lists no synapse files')
-    for (const [rel, want] of files) {
-      const file = safeJoin(join(dir, 'synapse-web'), rel)
-      if (!file || typeof want !== 'string' || !SHA256.test(want)) throw new SourcesError(`bad manifest synapse entry "${rel}"`)
-      let data
-      try {
-        data = readFileSync(file)
-      } catch (e) {
-        throw new SourcesError(`synapse file ${file} missing (${e.code ?? e.message}); the manifest pins it`)
-      }
-      const got = sha256(data)
-      if (got !== want) throw new SourcesError(`synapse file ${file} has sha256 ${got}, the manifest pins ${want}`)
-      src.synapse.set(want, file)
-    }
+    for (const [want, file] of pinnedFiles(join(dir, 'synapse-web'), 'synapse', manifest?.synapse)) src.synapse.set(want, file)
+  }
+  if (kinds.includes('chromium')) {
+    const commit = manifest?.chromium?.commit
+    if (typeof commit !== 'string' || !SHA1.test(commit)) throw new SourcesError("the manifest's chromium.commit must be a full commit id")
+    const files = pinnedFiles(join(dir, 'chromium'), 'chromium', manifest.chromium.files).map(([, file]) => file)
+    src.chromium = { commit, files: new Set(files) }
+  }
+  if (kinds.includes('openrgb')) {
+    src.openrgb = pinnedFiles(join(dir, 'openrgb-4418'), 'openrgb', manifest?.['openrgb-4418']?.files).map(([, file]) => file).sort()
   }
   return src
 }
@@ -876,7 +896,11 @@ const resolveCitation = (cite, src, root) => {
     return lineWindow(at(join(src.dir, 'zexrox'), cite.path), cite.from, cite.to, cite.token, `zexrox/${cite.path}`)
   }
   if (cite.kind === 'chromium') {
-    return lineWindow(at(join(src.dir, 'chromium'), cite.path), cite.line, cite.line, cite.token, `chromium/${cite.path}`)
+    const where = `chromium/${cite.path}`
+    if (!src.chromium.commit.startsWith(cite.commit)) return { error: `commit ${cite.commit} is not the manifest's chromium.commit` }
+    const file = safeJoin(join(src.dir, 'chromium'), cite.path)
+    if (!src.chromium.files.has(file)) return { error: `${where} is not pinned in the manifest` }
+    return lineWindow(linesOf(src, file), cite.line, cite.line, cite.token, where)
   }
   if (cite.kind === 'synapse') {
     const shas = [...src.synapse.keys()].filter((s) => s.startsWith(cite.sha))
@@ -891,18 +915,11 @@ const resolveCitation = (cite, src, root) => {
     return { window: cps.slice(Math.max(0, cite.offset - SYNAPSE_WINDOW), cite.offset + tok.length + SYNAPSE_WINDOW).join('') }
   }
   if (cite.kind === 'openrgb') {
-    const base = join(src.dir, 'openrgb-4418')
-    let names
-    try {
-      names = readdirSync(base).sort()
-    } catch {
-      return { error: `${base} not found` }
-    }
-    for (const name of names) {
-      const hit = linesOf(src, join(base, name))?.find((l) => l.includes(cite.note))
+    for (const file of src.openrgb) {
+      const hit = linesOf(src, file)?.find((l) => l.includes(cite.note))
       if (hit !== undefined) return { window: hit }
     }
-    return { error: `note ${cite.note} not in ${base}` }
+    return { error: `note ${cite.note} not in the manifest's openrgb-4418 files` }
   }
   if (cite.kind === 'probe') {
     const hit = at(root, cite.path)?.find((l) => l.includes(cite.key))

@@ -34,6 +34,10 @@ const OFFSET = Array.from(BUNDLE.slice(0, BUNDLE.indexOf('_calculateChecksum')))
 const SHA = sha256(BUNDLE)
 const SYN = `synapse:${SHA.slice(0, 8)}@${OFFSET}#_calculateChecksum`
 const Z = (lines, token) => `zexrox:native/host.py:${lines}@840f03dc${token ? `#${token}` : ''}`
+const CHROMIUM_COMMIT = `0123abcd${'0'.repeat(32)}`
+const CC = 'int FixtureOnly() {\n  return kFixtureValue;\n}\n'
+const CR = 'chromium:a/b.cc:2@0123abcd#kFixtureValue'
+const NOTES = '{"discussion": [{"id": "n-77", "body": "fixture text only"}]}\n'
 
 const put = (file, text) => {
   mkdirSync(dirname(file), { recursive: true })
@@ -47,7 +51,14 @@ const withTree = (t) => {
   put(join(dir, 'zexrox/.git/refs/heads/main'), `${COMMIT}\n`)
   put(join(dir, 'zexrox/native/host.py'), HOST)
   put(join(dir, 'synapse-web/p/main.js'), BUNDLE)
-  const manifest = { zexrox: { commit: COMMIT }, synapse: { 'p/main.js': SHA } }
+  put(join(dir, 'chromium/a/b.cc'), CC)
+  put(join(dir, 'openrgb-4418/issue.json'), NOTES)
+  const manifest = {
+    zexrox: { commit: COMMIT },
+    synapse: { 'p/main.js': SHA },
+    chromium: { commit: CHROMIUM_COMMIT, files: { 'a/b.cc': sha256(CC) } },
+    'openrgb-4418': { files: { 'issue.json': sha256(NOTES) } },
+  }
   put(join(root, 'manifest.json'), JSON.stringify(manifest))
   return { root, dir, manifest, manifestFile: join(root, 'manifest.json') }
 }
@@ -59,6 +70,12 @@ const resolveIn = (s, text, opts = {}) => checkCitations(text, { sources: s.dir,
 const messages = (r) => r.failures.map((f) => `[${f.section}] ${f.message}`)
 const passes = (r) => assert.deepEqual(messages(r), [])
 const fails = (r, re) => assert.ok(messages(r).some((m) => re.test(m)), `expected ${re} in:\n${messages(r).join('\n') || '(none)'}`)
+// The CLI on a one-row doc against s.dir (exit 2 when DIR does not match the manifest).
+const cliSources = (s, ...args) => {
+  const docFile = join(s.root, 'doc.md')
+  put(docFile, doc([row(Z(2))]))
+  return cli(['--require=none', `--sources=${s.dir}`, `--manifest=${s.manifestFile}`, ...args, docFile])
+}
 
 test('parseCitation returns the fields resolution needs', () => {
   const p = (text, fields) => assert.deepEqual(parseCitation(text), { text, ...fields })
@@ -121,6 +138,41 @@ test('sources directory: missing or not matching the manifest throws (exit 2)', 
   rmSync(join(s.dir, 'synapse-web'), { recursive: true })
   assert.throws(() => verifySources(s.dir, s.manifest), /synapse file .* missing/)
   verifySources(s.dir, s.manifest, ['zexrox'])
+})
+
+test('chromium: a full commit id and every listed file at its pinned sha256 (exit 2)', (t) => {
+  const s = withTree(t)
+  passes(resolveIn(s, doc([], `See ${CR} here`)))
+  fails(resolveIn(s, doc([], 'See chromium:a/b.cc:2@0123abce#kFixtureValue here')), /citation not found: .* — commit 0123abce is not the manifest's chromium\.commit/)
+  put(join(s.dir, 'chromium/a/c.cc'), CC)
+  fails(resolveIn(s, doc([], 'See chromium:a/c.cc:2@0123abcd#kFixtureValue here')), /citation not found: .* — chromium\/a\/c\.cc is not pinned in the manifest/)
+  assert.throws(() => verifySources(s.dir, { ...s.manifest, chromium: { ...s.manifest.chromium, commit: '0123abcd' } }), /chromium\.commit must be a full commit id/)
+  assert.throws(() => verifySources(s.dir, { ...s.manifest, chromium: { commit: CHROMIUM_COMMIT, files: {} } }), /the manifest lists no chromium files/)
+  assert.equal(cliSources(s).status, 0)
+  put(join(s.dir, 'chromium/a/b.cc'), `${CC}x`)
+  const r = cliSources(s)
+  assert.equal(r.status, 2)
+  assert.match(r.stderr, new RegExp(`chromium file \\S+b\\.cc has sha256 ${sha256(`${CC}x`)}, the manifest pins ${sha256(CC)}`))
+  assert.equal(cliSources(s, '--only=zexrox,synapse,openrgb,probe').status, 0)
+  rmSync(join(s.dir, 'chromium'), { recursive: true })
+  assert.throws(() => verifySources(s.dir, s.manifest), /chromium file .* missing/)
+  verifySources(s.dir, s.manifest, ['zexrox'])
+})
+
+test('openrgb: every listed file at its pinned sha256 (exit 2); notes resolve from those files only', (t) => {
+  const s = withTree(t)
+  passes(resolveIn(s, doc([], 'See openrgb#4418:n-77 here')))
+  put(join(s.dir, 'openrgb-4418/extra.json'), '{"id": "n-78"}\n')
+  fails(resolveIn(s, doc([], 'See openrgb#4418:n-78 here')), /citation not found: openrgb#4418:n-78 — note n-78 not in the manifest's openrgb-4418 files/)
+  assert.throws(() => verifySources(s.dir, { ...s.manifest, 'openrgb-4418': { files: { 'issue.json': 'abc' } } }), /bad manifest openrgb entry "issue\.json"/)
+  assert.equal(cliSources(s).status, 0)
+  put(join(s.dir, 'openrgb-4418/issue.json'), `${NOTES} `)
+  const r = cliSources(s)
+  assert.equal(r.status, 2)
+  assert.match(r.stderr, new RegExp(`openrgb file \\S+issue\\.json has sha256 ${sha256(`${NOTES} `)}, the manifest pins ${sha256(NOTES)}`))
+  assert.equal(cliSources(s, '--only=zexrox,synapse,chromium,probe').status, 0)
+  rmSync(join(s.dir, 'openrgb-4418/issue.json'))
+  assert.throws(() => verifySources(s.dir, s.manifest), /openrgb file .* missing/)
 })
 
 test('lock: every citation locked, none stale, resolved hashes match', (t) => {

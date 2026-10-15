@@ -121,7 +121,7 @@ as a diagnostic, never reject on it (until hardware evidence says otherwise).
 Also create `## Sources` linking protocol-sources.md; doc header states citation formats and
 "Synapse targets 02D0 (superset); zexrox runs against a real 0498". Run --write-lock. -->
 
-## M4: protocol.md — device-info commands, reply layouts, golden packets, diagnostics allowlist [in_progress]
+## M4: protocol.md — device-info commands, reply layouts, golden packets, diagnostics allowlist [done]
 - verify: `bash -c 'S=/tmp/claude-1000/-code-razer-driver/9f95b686-1bf0-4dae-a24a-b65ac47b4fc6/scratchpad/sources; node tools/check-protocol-doc.mjs --require=sources,framing,status,commands,golden --groups=device-info --sources=$S && grep -qx "Diagnostics reads: 0x00:0x81, 0x00:0x82" .ai_context/knowledge/protocol.md'`
 - risk: high
 - demo: protocol.md lists Get Firmware Version (00:81) and Get Serial (00:82) as confirmed, safe reads with exact sizes and reply layouts, plus golden packets G1 (firmware request, txId 0), G2 (serial request, txId 1) and G3 (a firmware reply) whose checksums the checker recomputes.
@@ -219,7 +219,10 @@ Matrix rows: per-key actuation, Rapid Trigger, continuous RT, Snap Tap, single-k
 dead-zone, analog report / Analog V3, Mod-Tap, dual keypress priority, Game Mode key lock, Tournament
 Mode, lighting effects, per-key RGB, brightness, key remap, Hypershift, macros, onboard profiles,
 polling rate. "no" rows cite zexrox README:25 (6 features); "yes" needs 0498-specific evidence (zexrox
-forward/rewrite); 02D0-only evidence ⇒ unknown. Run --write-lock. -->
+forward/rewrite); 02D0-only evidence ⇒ unknown. Run --write-lock.
+2026-10-14 (M4 verifier): zexrox does NOT forward 00:da, 00:5a or the 03:00 LED-8 set — host.py:506-525
+answers them on the host (Windows lock), so they are not 0498 evidence; Game Mode key lock stays "no" per
+README:25. Only host.py:526-532 forwarding (+ the 02:a7/27 rewrite) counts as "yes" evidence. -->
 
 ## M10: Wire the protocol check into verify and CI [pending]
 - verify: `bash -c 'S=/tmp/claude-1000/-code-razer-driver/9f95b686-1bf0-4dae-a24a-b65ac47b4fc6/scratchpad/sources; T=$(mktemp -d) && mkdir $T/zexrox && cp -r $S/zexrox/. $T/zexrox/ && node tools/check-protocol-doc.mjs --sources=$T --only=zexrox && grep -q "\"check:protocol\"" package.json && grep -q "only=zexrox" .github/workflows/pages.yml && grep -q "840f03dca68c7f7a3b8f867475a2c8e9a355a1bc" .github/workflows/pages.yml && npm run verify'`

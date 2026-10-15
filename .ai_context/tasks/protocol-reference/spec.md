@@ -71,3 +71,6 @@ after the owner runs a read-only WebUSB probe.)
   policy is tuned for 02D0). The follow-up task implements it.]
 - [ASSUMED: reply checksum is documented as "not validated by either
   source" — record it, do not enforce it.]
+- [ASSUMED: (M4) a class-0 read row is `confirmed` when zexrox lists its
+  class/ID as a read and its host forwards it unchanged to a real 02A7; the
+  name, size and reply layout stay likely (Synapse only), stated in Notes.]

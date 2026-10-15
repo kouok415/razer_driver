@@ -6,9 +6,11 @@ _Last updated: 2026-10-14_
 
 ## Now
 
-Project bootstrapped (React + TS + Vite skeleton, Vitest, Playwright,
-oxlint). The app only detects WebHID support; nothing talks to the keyboard
-yet. Target device: RZ03-0498, USB 1532:02A7 (confirmed by owner).
+Task `protocol-reference` (branch `task/protocol-reference`): M1–M4 done — checker,
+citation lock, and `knowledge/protocol.md` framing / status / device-info commands /
+golden packets; M5 (control interface) next. Read-only probe page is live
+(`probe.html`); WebHID cannot reach USB interface 3 on macOS
+(`knowledge/hid-02a7-macos.txt`). Waiting on the owner's WebUSB probe report.
 
 ## Next steps
 

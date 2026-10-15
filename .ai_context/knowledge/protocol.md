@@ -174,6 +174,129 @@ once, re-read only, never resend.
 7. Compute the reply checksum and record a mismatch as a diagnostic; never
    reject a reply on it until hardware evidence says otherwise.
 
+## Commands
+
+Synapse declares every command as a three-byte triple: data size, command
+class, command ID. Its argument checks report the second byte as the class and
+the third as the ID, and compare an argument array's length with the first
+(synapse:c1e6a425@1093996#commandClass, synapse:c1e6a425@1094070#AQ); its
+request builder writes the three to bytes 5, 6 and 7
+(synapse:c1e6a425@431065#_createDataSend). In both sources a get has bit 7 of
+the ID set and the matching set has it clear: Synapse's Get Serial Number is
+0x82 and its Set Serial Number 0x02 (synapse:c1e6a425@280735#130,
+synapse:c1e6a425@280759#22), and zexrox names one command pair 0xa7 (GET) and
+0x27 (SET) (zexrox:native/host.py:175@840f03dc). Dir below follows that bit.
+
+zexrox does not forward everything. It answers Get and Set Game Mode Selection
+(0x00:0xda, 0x00:0x5a) and the Gaming Mode LED set (0x03:0x00, LED 8) on the
+host, and rewrites 0x02:0xa7 / 0x02:0x27 into a different firmware command
+before sending (zexrox:native/host.py:1-5@840f03dc,
+zexrox:native/host.py:170-180@840f03dc,
+zexrox:native/host.py:506-525@840f03dc). Its host sends every other
+well-formed report, the class-0 reads included, to the real 02A7 as received,
+size byte included (zexrox:native/host.py:526-532@840f03dc). It lists the
+class-0 reads it had already identified, without their sizes
+(zexrox:native/host.py:18-24@840f03dc). So for the class-0 reads below, the class, ID and read direction are confirmed by
+both sources, while the name, the size and the reply layout come from Synapse
+only and are likely; each row's Notes say so.
+
+Safe is this repo's allowlist, not a source fact: `yes` only on a confirmed
+read that a read-only diagnostics probe may send; every write is `no`.
+[HYPOTHESIS] Such a read changes no device state; the evidence is that zexrox
+passes these reads to the real keyboard whenever Synapse asks.
+
+| Group | Class | ID | Name | Dir | Size | Safe | Confidence | Source | Notes |
+|---|---|---|---|---|---|---|---|---|---|
+| device-info | 0x00 | 0x81 | Get Firmware Version | read | 2 | yes | confirmed | synapse:c1e6a425@280681#129; synapse:c1e6a425@280694#Firmware; synapse:c1e6a425@279884#K_; synapse:c1e6a425@1093638#K_; zexrox:native/host.py:22@840f03dc | Confirmed (both sources): class, ID, read. Likely (Synapse only): name, size 2, reply layout (see Reply layouts); zexrox does not check this size. No arguments. |
+| device-info | 0x00 | 0x82 | Get Serial Number | read | 22 | yes | confirmed | synapse:c1e6a425@280735#130; synapse:c1e6a425@280775#Serial; synapse:c1e6a425@279893#Kr; synapse:c1e6a425@280580#yf; synapse:c1e6a425@1093877#Kr; zexrox:native/host.py:22@840f03dc | Confirmed (both sources): class, ID, read. Likely (Synapse only): name, size 22, reply layout; zexrox does not check this size. No arguments. [HYPOTHESIS] The reply is the unit's serial, so this repo keeps it out of logs and bug reports. |
+| device-info | 0x00 | 0x84 | Get Device Mode | read | 2 | no | confirmed | synapse:c1e6a425@280913#132; synapse:c1e6a425@280952#Device; zexrox:native/host.py:22@840f03dc | Confirmed (both sources): class, ID, read. Likely (Synapse only): size 2. [HYPOTHESIS] The name is paired with the triple by its position in Synapse's command list. Reply layout not traced. Not on the diagnostics list in this version. |
+| device-info | 0x00 | 0x86 | Get Edition Information | read | 3 | no | confirmed | synapse:c1e6a425@281121#134; synapse:c1e6a425@281159#Edition; zexrox:native/host.py:22@840f03dc | Confirmed (both sources): class, ID, read. Likely (Synapse only): size 3. [HYPOTHESIS] The name is paired with the triple by its position in Synapse's command list. Reply layout not traced. Not on the diagnostics list in this version. |
+| device-info | 0x00 | 0x87 | Get Extended Firmware Version | read | 4 | no | confirmed | synapse:c1e6a425@281203#135; synapse:c1e6a425@281225#Firmware; zexrox:native/host.py:22@840f03dc | Confirmed (both sources): class, ID, read. Likely (Synapse only): size 4. [HYPOTHESIS] The name is paired with the triple by its position in Synapse's command list. Reply layout not traced. Not on the diagnostics list in this version. |
+| device-info | 0x00 | 0x02 | Set Serial Number | write | 22 | no | likely | synapse:c1e6a425@280759#22; synapse:c1e6a425@280797#Serial; synapse:c1e6a425@279741#AQ; synapse:c1e6a425@279828#I0; synapse:c1e6a425@1094070#AQ | Synapse only; zexrox does not list it. Overwrites the serial: never send. Same class and size as 0x00:0x82; the ID differs only in bit 7 (see below). |
+
+Set Serial Number (0x00:0x02) and Get Serial Number (0x00:0x82) share class
+and size and differ in one bit of byte 7, so one flipped bit turns the safe
+read into a write of the serial. [HYPOTHESIS] The follow-up transport task
+should compare the whole (class, ID) pair against the diagnostics list before
+sending, and refuse anything else, instead of trusting a direction flag.
+
+The line below lists the commands a read-only diagnostics probe may send;
+each must be a Safe=yes row above.
+
+Diagnostics reads: 0x00:0x81, 0x00:0x82
+
+### Reply layouts
+
+Reply data starts at byte 8 and is byte 5 bytes long (see Framing); data[n]
+below is byte 8 + n of the reply.
+
+| Command | Bytes | Meaning | Source |
+|---|---|---|---|
+| 0x00:0x81 Get Firmware Version | data[0] | Major version number. | synapse:c1e6a425@1093666#major; synapse:c1e6a425@1093638#K_ |
+| 0x00:0x81 Get Firmware Version | data[1] | Minor version number. Synapse reads nothing past data[1] and does not look at the status before decoding. | synapse:c1e6a425@1093666#major |
+| 0x00:0x82 Get Serial Number | data[0] up to the reply's byte 5 | Serial number bytes. Synapse keeps every byte and also derives a text form from only the bytes in 0x20 to 0x7e, skipping the rest (so 0x00 padding drops out). | synapse:c1e6a425@1093813#serialNumberAscii; synapse:c1e6a425@1093742#32; synapse:c1e6a425@1093877#Kr |
+| 0x00:0x02 Set Serial Number | request data[0] to data[21] | The new serial, exactly 22 bytes; Synapse refuses any other length before sending. It decodes the reply like 0x00:0x82. | synapse:c1e6a425@1094070#AQ; synapse:c1e6a425@1094147#commandClass |
+
+## Golden packets
+
+Byte-exact packets for the two diagnostics reads: the 90 data bytes (report ID
+0 not included), 16 per line. The checker recomputes byte 88 of each. The
+requests follow Framing: byte 0 = 0x00, transaction IDs 0 and 1 (the first two
+IDs Synapse sends, see Transaction ID), bytes 2 to 4 = 0x00, then size, class
+and ID, no arguments, the checksum at byte 88 and 0x00 at byte 89.
+
+### G1: request Get Firmware Version
+
+- Source: synapse:c1e6a425@280681#129; synapse:c1e6a425@431065#_createDataSend; synapse:c1e6a425@430969#_getTransactionId; zexrox:native/host.py:22@840f03dc
+
+```hex
+00 00 00 00 00 02 00 81 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 83 00
+```
+
+Transaction ID 0x00, size 0x02, class 0x00, ID 0x81. Checksum: 0x02 XOR 0x81 =
+0x83.
+
+### G2: request Get Serial Number
+
+- Source: synapse:c1e6a425@280735#130; synapse:c1e6a425@431065#_createDataSend; synapse:c1e6a425@430969#_getTransactionId; zexrox:native/host.py:22@840f03dc
+
+```hex
+00 01 00 00 00 16 00 82 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 94 00
+```
+
+Transaction ID 0x01, size 0x16 (22), class 0x00, ID 0x82. Checksum: 0x16 XOR
+0x82 = 0x94.
+
+### G3: response Get Firmware Version (illustrative values)
+
+- Source: synapse:c1e6a425@1093666#major; synapse:c1e6a425@432629#_getUSBTransferInResult
+
+```hex
+02 00 00 00 00 02 00 81 01 02 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 80 00
+```
+
+Illustrative: version 1.2 is made up, not read from a device. It shows the
+shape of a successful answer to G1: status 0x02, transaction ID 0x00 repeated,
+size 0x02, class and ID repeated, data[0] = 0x01 (major), data[1] = 0x02
+(minor). Byte 88 follows the request rule (0x02 XOR 0x81 XOR 0x01 XOR 0x02 =
+0x80) although neither source checks a reply's checksum; what a real 02A7
+puts in bytes 2 to 4 and 88 of a reply is not established.
+
 ## Sources
 
 Where each source comes from, what it is good for, and its license:

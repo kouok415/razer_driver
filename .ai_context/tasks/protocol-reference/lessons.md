@@ -10,3 +10,5 @@
 - 2026-10-14 M4: hand-counted Synapse offsets into `[2,0,132]`-style triples were off by one (3 of 30 citations); print each cited token's offset from the offset script instead of adding prefix lengths by hand, and let the checker's "nearest occurrence" confirm.
 - 2026-10-14 M4: zexrox READ_COMMANDS (host.py:22) holds class/ID pairs only, no sizes or names (size checks exist only for EXTRA_READS); class-0 sizes, names and layouts are Synapse-only, so a "confirmed" device-info row must state the confirmed-vs-likely split in Notes.
 - 2026-10-14 M4 verifier: "zexrox forwards every report" was false — host.py answers 00:da/00:5a/03:00-LED8 itself and rewrites 02:a7/27; a cited window must be read to the end before summarising what a source does.
+- 2026-10-14 M5: GitLab notes API needs a token (use /-/issues/N/discussions.json); find moved Chromium files via `gh api search/code`.
+- 2026-10-14 M5 verifier: cite the callee body, not its call site; the value must be in the window; one function is not a whole API; describe the probe from origin/master.

@@ -20,3 +20,9 @@
 2026-10-14T21:41:59	M4	WAITING	executor in flight since 2026-10-14T21:41:56
 2026-10-14T21:48:47	M4	PASS	bash -c 'S=/tmp/claude-1000/-code-razer-driver/9f95b686-1bf0-4dae-a24a-b65ac47b4fc6/scratchpad/sources; node tools/check-protocol-doc.mjs --require=sources,framing,status,commands,golden --groups=device-info --sources=$S && grep -qx "Diagnostics reads: 0x00:0x81, 0x00:0x82" .ai_context/knowledge/protocol.md'
 2026-10-14T21:48:52	M4	PAUSED	green boundary — paused after the one-time continuation prompt
+2026-10-14T21:58:40	M5	WAITING	executor in flight since 2026-10-14T21:58:24
+2026-10-14T22:08:30	M5	PASS	bash -c 'S=/tmp/claude-1000/-code-razer-driver/9f95b686-1bf0-4dae-a24a-b65ac47b4fc6/scratchpad/sources; node tools/check-protocol-doc.mjs --require=sources,framing,status,commands,golden,control --groups=device-info --sources=$S && grep -q "4418" .ai_context/knowledge/protocol.md && grep -q "probe:.ai_context/knowledge/hid-02a7-macos.txt" .ai_context/knowledge/protocol.md'
+2026-10-14T22:08:34	M5	PAUSED	green boundary — paused after the one-time continuation prompt
+2026-10-14T22:19:52	M5	WAITING	executor in flight since 2026-10-14T22:19:39
+2026-10-14T22:28:21	M5	PASS	bash -c 'S=/tmp/claude-1000/-code-razer-driver/9f95b686-1bf0-4dae-a24a-b65ac47b4fc6/scratchpad/sources; node tools/check-protocol-doc.mjs --require=sources,framing,status,commands,golden,control --groups=device-info --sources=$S && grep -q "4418" .ai_context/knowledge/protocol.md && grep -q "probe:.ai_context/knowledge/hid-02a7-macos.txt" .ai_context/knowledge/protocol.md'
+2026-10-14T22:32:25	M5	PASS	bash -c 'S=/tmp/claude-1000/-code-razer-driver/9f95b686-1bf0-4dae-a24a-b65ac47b4fc6/scratchpad/sources; node tools/check-protocol-doc.mjs --require=sources,framing,status,commands,golden,control --groups=device-info --sources=$S && grep -q "4418" .ai_context/knowledge/protocol.md && grep -q "probe:.ai_context/knowledge/hid-02a7-macos.txt" .ai_context/knowledge/protocol.md'

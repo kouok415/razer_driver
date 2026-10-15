@@ -6,9 +6,10 @@ _Last updated: 2026-10-14_
 
 ## Now
 
-Task `protocol-reference` (branch `task/protocol-reference`): M1–M4 done — checker,
+Task `protocol-reference` (branch `task/protocol-reference`): M1–M5 done — checker,
 citation lock, and `knowledge/protocol.md` framing / status / device-info commands /
-golden packets; M5 (control interface) next. Read-only probe page is live
+golden packets / control interface; M6 (actuation, Rapid Trigger, Snap Tap) next. Pinned
+Chromium predicts WebUSB cannot reach interface 3 (Chrome M148+). Read-only probe page is live
 (`probe.html`); WebHID cannot reach USB interface 3 on macOS
 (`knowledge/hid-02a7-macos.txt`). Waiting on the owner's WebUSB probe report.
 

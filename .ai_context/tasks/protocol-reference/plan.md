@@ -142,7 +142,7 @@ would need a documented rule change, never a silent edit.
 Also from M3: no 50 ms value exists (Synapse defaults 5/5/10/20 @1997114); status 0x00-as-pending is
 [HYPOTHESIS] (zexrox treats 0x00 as final); zexrox's own LED write counts txId 1..255 (host.py:442). -->
 
-## M5: protocol.md — control interface: macOS interface map, protected rules, transport options [pending]
+## M5: protocol.md — control interface: macOS interface map, protected rules, transport options [done]
 - verify: `bash -c 'S=/tmp/claude-1000/-code-razer-driver/9f95b686-1bf0-4dae-a24a-b65ac47b4fc6/scratchpad/sources; node tools/check-protocol-doc.mjs --require=sources,framing,status,commands,golden,control --groups=device-info --sources=$S && grep -q "4418" .ai_context/knowledge/protocol.md && grep -q "probe:.ai_context/knowledge/hid-02a7-macos.txt" .ai_context/knowledge/protocol.md'`
 - risk: high
 - demo: protocol.md explains which of the keyboard's six USB interfaces carries what, why a web page using WebHID cannot reach the Razer control channel (interface 3) on macOS, what Chrome's WebHID/WebUSB protection rules allow, and the transport options for the follow-up task.
@@ -184,7 +184,12 @@ interfaces 1/5. `02A7 status:` stays [UNVERIFIED] for the interface-3 channel on
 02:a7/02:27 size 15 → 02:a1/02:21 size 4) ⇒ 02:a1/02:21 confirmed for 0498, 02:a7 not confirmed for
 0498. Setters (ID & 0x7f) and arg layouts from the Synapse bundle only ⇒ at most `likely` for 0498.
 Features the zexrox README:25 lists as unsupported on 0498 keep their rows with a Notes flag. All
-writes Safe=no. Unsourced → `### Gaps` bullet, never invented. Run --write-lock. -->
+writes Safe=no. Unsourced → `### Gaps` bullet, never invented. Run --write-lock.
+2026-10-14 (drift D6): zexrox listing a command (EXTRA_READS/READ_COMMANDS) or forwarding it
+(host.py:526-532) shows only that Synapse sends it to a real 02A7 — never that the 0498 firmware
+implements it. EXTRA_READS includes 02:af, 02:ac, 02:a8, 02:aa, 00:db (host.py:58/60/65/67/68), whose
+features README:25 says the 0498 lacks. Row confidence = class/ID/size agreement; firmware support
+goes in Notes: README:25 ⇒ unsupported; capture / 0498-specific rewrite ⇒ supported; else unknown. -->
 
 ## M7: protocol.md — lighting commands [pending]
 - verify: `bash -c 'S=/tmp/claude-1000/-code-razer-driver/9f95b686-1bf0-4dae-a24a-b65ac47b4fc6/scratchpad/sources; node tools/check-protocol-doc.mjs --require=sources,framing,status,commands,golden,control,lamparray --groups=device-info,actuation,rapid-trigger,snap-tap,lighting --sources=$S && test "$(grep -cE "^\| *lighting *\|" .ai_context/knowledge/protocol.md)" -ge 4'`
@@ -198,7 +203,10 @@ LampArray section: decode report ids 1–6 from the owner dump's interface-4 des
 and name each field from the USB-IF HID Usage Tables, Lighting and Illumination page 0x59 (cite
 url:https://usb.org/... — fetch the HUT PDF/text into NEW dir $S/sources/hut/ and add to manifest if a
 stable URL exists). Include LampArrayAttributes (1), LampAttributesRequest (2) / Response (3),
-LampMultiUpdate (4), LampRangeUpdate (5), LampArrayControl/AutonomousMode (6). Run --write-lock. -->
+LampMultiUpdate (4), LampRangeUpdate (5), LampArrayControl/AutonomousMode (6). Run --write-lock.
+2026-10-14 (M5): owner dump gives if4 feature sizes id1..6 = 22,2,28,50,9,1 B (max 51); WebHID treats
+page 0x59 as unprotected (chromium hid_report_utils.cc:45 @1aeca202, already in manifest) — reuse
+those citations rather than re-fetching. -->
 
 ## M8: protocol.md — keymap, Hypershift, macro commands [pending]
 - verify: `bash -c 'S=/tmp/claude-1000/-code-razer-driver/9f95b686-1bf0-4dae-a24a-b65ac47b4fc6/scratchpad/sources; node tools/check-protocol-doc.mjs --require=sources,framing,status,commands,golden,control --groups=device-info,actuation,rapid-trigger,snap-tap,lighting,keymap,hypershift,macro --sources=$S && grep -qE "^\| *macro *\| *0x06 *\|" .ai_context/knowledge/protocol.md'`
@@ -222,7 +230,12 @@ polling rate. "no" rows cite zexrox README:25 (6 features); "yes" needs 0498-spe
 forward/rewrite); 02D0-only evidence ⇒ unknown. Run --write-lock.
 2026-10-14 (M4 verifier): zexrox does NOT forward 00:da, 00:5a or the 03:00 LED-8 set — host.py:506-525
 answers them on the host (Windows lock), so they are not 0498 evidence; Game Mode key lock stays "no" per
-README:25. Only host.py:526-532 forwarding (+ the 02:a7/27 rewrite) counts as "yes" evidence. -->
+README:25.
+2026-10-14 (drift D6, supersedes the line above's "yes" rule): generic forwarding (host.py:526-532)
+is NOT "yes" evidence. "yes" needs command-specific 0498 evidence (a capture such as the snaptap one
+behind host.py:169-180, a 0498-specific rewrite, or zexrox README saying the feature works); README:25
+⇒ "no"; otherwise "unknown". Polling: also Synapse [1,0,133] Get Device Polling Period (00:85,
+@280600 region), not only 00:c0. -->
 
 ## M10: Wire the protocol check into verify and CI [pending]
 - verify: `bash -c 'S=/tmp/claude-1000/-code-razer-driver/9f95b686-1bf0-4dae-a24a-b65ac47b4fc6/scratchpad/sources; T=$(mktemp -d) && mkdir $T/zexrox && cp -r $S/zexrox/. $T/zexrox/ && node tools/check-protocol-doc.mjs --sources=$T --only=zexrox && grep -q "\"check:protocol\"" package.json && grep -q "only=zexrox" .github/workflows/pages.yml && grep -q "840f03dca68c7f7a3b8f867475a2c8e9a355a1bc" .github/workflows/pages.yml && npm run verify'`
@@ -236,7 +249,13 @@ $RUNNER_TEMP/src/zexrox, checkout the pinned full sha (data only — never run a
 already used in the file. Also add a one-line pointer to protocol.md in protocol-sources.md.
 2026-10-14 (M1 verifier): with no flags the checker runs --require=all but NO group checks — make
 check:protocol run `--require=all --groups=all` so verify/CI also enforce group coverage and the
-device-info firmware/serial rule. -->
+device-info firmware/serial rule.
+2026-10-14 (drift D5): verifySources (check-protocol-doc.mjs ~L795-823) hash-checks only zexrox and
+synapse; chromium @<commit> is parsed but never compared and an openrgb note ID resolves if it
+appears anywhere in the folder. Extend it to check the chromium/openrgb-4418 manifest sha256 + the
+chromium commit, with a test per source kind. (D8): branch base is 39eb1db but origin/master is
+5a65950 (probe page); `git merge origin/master` (no force, merge-tree was clean) before npm run
+verify so CI runs the tree verified locally. -->
 
 ## M11: State write-back, PR with green CI — owner approves the merge [pending]
 - verify: `bash -c 'npm run verify && ! git ls-files | grep -qE "(^|/)(host\.py|virtual-hid\.js|main\.[0-9a-f]{8}\.js)$" && grep -q "protocol.md" .ai_context/state.md && test "$(gh pr view task/protocol-reference --json headRefOid -q .headRefOid)" = "$(git rev-parse HEAD)" && timeout 420 gh pr checks task/protocol-reference --watch --fail-fast'`
@@ -247,7 +266,11 @@ device-info firmware/serial rule. -->
 names, no serial numbers, no unrelated-app names) and confirm no source text entered the repo.
 INDEX.md: add a row for knowledge/protocol.md and knowledge/hid-02a7-macos.txt. state.md Now/Next
 (≤5 KB, dated): next = follow-up transport task after the WebUSB probe. Push without force;
-`gh pr create --base master`; body = AC1–AC6 checklist + attribution line. DO NOT merge. -->
+`gh pr create --base master`; body = AC1–AC6 checklist + attribution line. DO NOT merge.
+2026-10-14 (drift D9): state.md Next steps 2 still says "WebHID connect to interface 3 … fake
+navigator.hid" — rewrite it from the rescope. CLAUDE.md DoD needs ADRs: append to decisions.md the
+rescope (WebHID cannot reach if3 on macOS; ADR-001's WebHID premise is superseded for the control
+channel), the request-cycle recommendation, and the diagnostics allowlist. -->
 
 ## M12: Merge and confirm the master build [pending]
 - verify: `bash -c 'test "$(gh pr view task/protocol-reference --json state -q .state)" = MERGED && M=$(gh pr view task/protocol-reference --json mergeCommit -q .mergeCommit.oid) && test "$(gh run list --workflow pages.yml --commit "$M" --json conclusion -q ".[0].conclusion")" = success'`

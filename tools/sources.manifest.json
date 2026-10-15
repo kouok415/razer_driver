@@ -50,5 +50,30 @@
     "products720/assets_base.js": "b070263d244b62f1a80339156ac2930ac1b5263b3b9472019449e9988ed70518",
     "products720/assets_manifest.js": "ccf30d4cf77760e2df288b9252c6c1e850456db3e1c72d778f2f8aff7ea24dce",
     "products720/main.2f427e06.js": "c1e6a425196d7f1f82e052535af29e69c5327ba8d3ea1fe267fbd65cfb41f509"
+  },
+  "chromium": {
+    "commit": "1aeca202fed13742d05b130fcb49e418f98fc4ca",
+    "files": {
+      "services/device/public/cpp/hid/hid_report_utils.cc": "bac36856a3535287efb29ae1dc160cbee36e88e195ce07a3e1dfcff0d0875bd1",
+      "services/device/usb/mojo/device_impl.cc": "2248a0be947896273e9e43a3d9807f2578ae4f4dd017e9b6ef7d8d22f78351b2",
+      "content/browser/usb/web_usb_service_impl.cc": "bbac2c9fdf8f6b9aa6011b3a7202c3a3fefa57da750adb590a714e0259fb766d",
+      "chrome/browser/usb/chrome_usb_delegate.cc": "fce38b925518275bbbd6c2fedcec096addb3d87110b297ce1e0fe19e02feba0c",
+      "third_party/blink/renderer/modules/webusb/usb_device.cc": "1ceb5d810a31c85d2e6c287cb7378ea110dd109a2a4fbab2d38376d43fd35e08",
+      "services/device/public/cpp/device_features.cc": "130a00ea1a0883e7b8aadf771402df69a97cdce1c0535a93f17abdb511c9aa3f",
+      "services/device/hid/hid_connection.cc": "046fd2b35095d02956e938a0a300b2d257b456a73bdd42469584daa29958bebb",
+      "services/device/public/cpp/hid/hid_blocklist.cc": "2962ad479ee83c5d4e64a8585ce09ad8f000e1a8ee64621699299aa0617298ca",
+      "services/device/public/mojom/hid.mojom": "5970367d051f577f398723f2f2f5f2c67b1146bb289bcda475fa2789967881a7"
+    }
+  },
+  "openrgb-4418": {
+    "fetched": "2026-10-14",
+    "urls": {
+      "issue.json": "https://gitlab.com/api/v4/projects/CalcProgrammer1%2FOpenRGB/issues/4418",
+      "discussions.json": "https://gitlab.com/CalcProgrammer1/OpenRGB/-/issues/4418/discussions.json"
+    },
+    "files": {
+      "issue.json": "52081fe81cff702cefe26fda7472d0c277150657ba825b511a51bf76468ee2b1",
+      "discussions.json": "247c36ad12db0a5d5658569792d82c398e39b79591b2c6065e8fea03bf4b1c57"
+    }
   }
 }

@@ -74,3 +74,19 @@ after the owner runs a read-only WebUSB probe.)
 - [ASSUMED: (M4) a class-0 read row is `confirmed` when zexrox lists its
   class/ID as a read and its host forwards it unchanged to a real 02A7; the
   name, size and reply layout stay likely (Synapse only), stated in Notes.]
+- [ASSUMED: (drift) zexrox listing or forwarding a command shows only that
+  Synapse sends it to a real 02A7, not that the 0498 firmware implements
+  it; a feature-matrix "yes" needs command-specific 0498 evidence, else
+  "unknown".]
+- [ASSUMED: (drift) AC3's response golden (G3) is synthetic: its layout
+  follows the cited framing rules, its payload values are illustrative,
+  no real 02A7 reply has been captured, and its byte 88 follows the
+  request checksum rule so the checker can recompute it.]
+- [ASSUMED: (drift) 0x00:0x82 Get Serial Number stays on the diagnostics
+  allowlist (Synapse shows the serial); the follow-up must keep the reply
+  out of logs, reports and the public repo — owner may veto.]
+- [ASSUMED: (M5) facts resting only on Chromium code at the pinned commit
+  are `likely` (one source; the owner's Chrome build and field trials are
+  unknown); "WebHID only sees collections the OS HID stack exposes" and the
+  first-milestone inferences from chromiumdash branch positions are
+  [HYPOTHESIS].]

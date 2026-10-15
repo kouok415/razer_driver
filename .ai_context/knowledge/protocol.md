@@ -24,11 +24,16 @@ Citation formats (a Source cell holds one or more, separated by "; "):
 ```text
 zexrox:<path>:<line>[-<line>]@840f03dc[#<token>]  lines of that zexrox file at commit 840f03dc; the token must occur in them
 synapse:<sha256 prefix>@<offset>#<token>           the token starts at that code-point offset of the bundle file with that sha256
+chromium:<path>:<line>@1aeca202#<token>            that line of the Chromium file at commit 1aeca202; the token must occur in it
+probe:<repo path>#<key>                            the first line of that file in this repo that contains the key
+openrgb#4418:<text>                                text that occurs in the saved OpenRGB issue 4418 thread
 url:<https URL>                                    background reference only; never resolved
 ```
 
-Confidence: `confirmed` = both sources agree, or zexrox observed it on a real
-02A7; `likely` = Synapse only; `[HYPOTHESIS]` = this document's inference.
+Confidence: `confirmed` = seen on a real 02A7 (the owner's macOS dump, or
+zexrox running against one) or stated by two independent sources that agree;
+`likely` = one source only (Synapse, zexrox's code, Chromium at the pinned
+commit, or OpenRGB); `[HYPOTHESIS]` = this document's inference or choice.
 
 ## Framing
 
@@ -174,6 +179,136 @@ once, re-read only, never resend.
 7. Compute the reply checksum and record a mismatch as a diagnostic; never
    reject a reply on it until hardware evidence says otherwise.
 
+## Control interface
+
+How a host reaches the 90-byte control channel this document describes, what
+each of the keyboard's six USB interfaces carries on macOS, and what Chrome
+lets a web page open. Confidence tags follow the definition at the top of
+this document.
+
+02A7 status: [UNVERIFIED] for the interface-3 control channel on macOS; no transport has reached it yet.
+
+| Claim | Source | Confidence |
+|---|---|---|
+| On the owner's Mac, USB interface 3 has no driver attached: no HID device and no user client, so it is absent from the system's HID device list. | probe:.ai_context/knowledge/hid-02a7-macos.txt#IOUSBHostInterface@3 | confirmed |
+| Interfaces 0, 1 and 2 also carry a Razer DriverKit event service on that Mac; interfaces 4 and 5 (5 is the vendor-page interface) have the Apple HID driver only. | probe:.ai_context/knowledge/hid-02a7-macos.txt#IOUSBHostInterface@0; probe:.ai_context/knowledge/hid-02a7-macos.txt#IOUSBHostInterface@1; probe:.ai_context/knowledge/hid-02a7-macos.txt#IOUSBHostInterface@2; probe:.ai_context/knowledge/hid-02a7-macos.txt#IOUSBHostInterface@4; probe:.ai_context/knowledge/hid-02a7-macos.txt#IOUSBHostInterface@5 | confirmed |
+| The largest feature report macOS exposes is on interface 4 (LampArray): the dump's MaxFeatureReportSize of 51 is report 4's 50 data bytes (see the table below) plus the report-ID byte. No exposed interface has the 90-byte report-ID-0 control report. | probe:.ai_context/knowledge/hid-02a7-macos.txt#kbd-lamparray; probe:.ai_context/knowledge/hid-02a7-macos.txt#IOUSBHostInterface@4; zexrox:native/host.py:446@840f03dc#send_feature_report | confirmed |
+| WebHID can only offer collections the OS HID stack exposes, so a page on macOS cannot pick interface 3. | probe:.ai_context/knowledge/hid-02a7-macos.txt#IOUSBHostInterface@3; url:https://wicg.github.io/webhid/ | [HYPOTHESIS] |
+| zexrox, against a real 02A7 on Windows, keeps only the interface-3 collections of 1532:02A7 (interface number 3, or mi_03 in the path), refuses to open unless exactly one matches, and never looks at its usage page. There it uses report-ID-0 feature reports: it writes the ID byte plus 90 B, and reads by asking for 91 B, taking either 91 B that start with ID 0 (the ID byte is dropped) or a bare 90 B. | zexrox:native/host.py:455-464@840f03dc#mi_03; zexrox:native/host.py:446@840f03dc#send_feature_report; zexrox:native/host.py:408-418@840f03dc#get_feature_report | confirmed |
+| zexrox also watches interface 1 for the Fn key. Per its notes the 48-byte interrupt payload on endpoint 0x82 begins with report ID 0x04 (the dump's 47 B input plus the ID byte), and the byte after it is 1 while Fn is held. It opens every mi_01 collection, keeps the one that delivers that report, closes the others, and never opens interface 0; Fn+F10 switches a lock of its own on the Windows side. | zexrox:native/host.py:225-229@840f03dc#0x82; zexrox:native/host.py:319-333@840f03dc#mi_01; zexrox:native/host.py:707-762@840f03dc#_acquire_fn_reader; zexrox:native/host.py:560@840f03dc#F10; probe:.ai_context/knowledge/hid-02a7-macos.txt#kbd-multi | confirmed |
+| Synapse (for 02D0) matches WebHID devices on vendor ID, its product IDs and a usage page. The default usage page is 12 (0x0C, Consumer), a bundle constant exported as MU; the device config may replace it and add a usage, and the 02D0 config was not read. Its feature-report device is an unopened match with exactly one collection, on that usage page, which has the configured usage or, when no usage is configured, at least one feature report. | synapse:c1e6a425@2672184#usagePage; synapse:c1e6a425@545501#MU; synapse:c1e6a425@545646#12; synapse:c1e6a425@2679560#usagePage; synapse:c1e6a425@2677504#isFeatureReportDevice | likely |
+| For hardware events Synapse first reuses the feature-report device: it keeps that device unless its first collection's input-report list is empty. zexrox's fake 02D0 lists an input report on its single collection so that this listener attaches there. | synapse:c1e6a425@2676118#connectHardwareEventDevice; zexrox:extension/virtual-hid.js:224-226@840f03dc#inputReports | confirmed |
+| Only when that list is empty does Synapse search the devices the page already holds permission for (getDevices) for one that is unopened, has the vendor ID and a known product ID, a non-empty product name, more than one collection and at least one collection with input reports; it then opens that device and listens to its input reports. | synapse:c1e6a425@2676118#connectHardwareEventDevice; synapse:c1e6a425@2676274#getDevices; synapse:c1e6a425@2676390#productName | likely |
+| zexrox's fake 02D0 shows Synapse one collection (usage page 12, usage 1) with input report 1 and a 90-byte feature report 0: the shape Synapse looks for, not the real 02A7 layout. On the real keyboard zexrox needs exactly one interface-3 collection and never checks its usage page, so interface 3's usage page is unknown. Of the five interfaces macOS exposes, none is a lone usage-page-12 collection; interface 1 has 0x0C/0x01 as one of seven. | zexrox:extension/virtual-hid.js:224-235@840f03dc#usagePage; zexrox:native/host.py:455-464@840f03dc#mi_03; probe:.ai_context/knowledge/hid-02a7-macos.txt#kbd-multi; probe:.ai_context/knowledge/hid-02a7-macos.txt#IOUSBHostInterface@3 | likely |
+| Chrome's WebHID always protects the Keyboard/Keypad usage page, and Generic Desktop Pointer, Mouse, Keyboard and Keypad collections for input and output reports; feature reports of those four are not protected. | chromium:services/device/public/cpp/hid/hid_report_utils.cc:41@1aeca202#kPageKeyboard; chromium:services/device/public/cpp/hid/hid_report_utils.cc:53@1aeca202#kFeature | likely |
+| That built-in rule (IsAlwaysProtected) also fully protects two Generic Desktop ranges: System Control, usages 0x80 to 0x8F, and System Dock to System Display Swap, 0xA0 to 0xB6. It protects no other usage page. | chromium:services/device/public/cpp/hid/hid_report_utils.cc:56@1aeca202#kGenericDesktopSystemControl; chromium:services/device/public/cpp/hid/hid_report_utils.cc:61@1aeca202#kGenericDesktopSystemDock; chromium:services/device/public/cpp/hid/hid_report_utils.cc:45@1aeca202#kPageGenericDesktop; chromium:services/device/public/mojom/hid.mojom:86@1aeca202#kGenericDesktopSystemControl; chromium:services/device/public/mojom/hid.mojom:101@1aeca202#kGenericDesktopSystemWarmRestart; chromium:services/device/public/mojom/hid.mojom:108@1aeca202#kGenericDesktopSystemDock; chromium:services/device/public/mojom/hid.mojom:123@1aeca202#kGenericDesktopSystemDisplaySwap | likely |
+| Separately, a WebHID connection refuses every report the HID blocklist matches. The blocklist's built-in entries cover the FIDO usage page (0xF1D0) on every device, 45 security-key vendor and product pairs (whole devices), and one vendor-page output report of vendor 0x0B0E; none names Razer's vendor ID 0x1532, so neither rule protects the 02A7's 0x59 lighting page or its 0xFF00 vendor page. A field-trial parameter can add entries; none was read. | chromium:services/device/hid/hid_connection.cc:166@1aeca202#IsReportProtected; chromium:services/device/hid/hid_connection.cc:193@1aeca202#blocklist; chromium:services/device/public/cpp/hid/hid_blocklist.cc:40@1aeca202#kPageFido; chromium:services/device/public/cpp/hid/hid_blocklist.cc:44@1aeca202#VENDOR_PRODUCT_RULE; chromium:services/device/public/mojom/hid.mojom:49@1aeca202#kPageFido; chromium:services/device/public/cpp/hid/hid_blocklist.cc:109@1aeca202#0x0b0e; chromium:services/device/public/cpp/hid/hid_blocklist.cc:236@1aeca202#kWebHidBlocklistAdditions | likely |
+| WebHID decides protection per report ID and report type. With recursive filtering, on by default, a report is protected when any application collection that holds it, top-level or nested, matches the built-in rule. | chromium:services/device/public/cpp/hid/hid_report_utils.cc:131@1aeca202#kHIDCollectionTypeApplication; chromium:services/device/public/cpp/hid/hid_report_utils.cc:132@1aeca202#IsAlwaysProtected; chromium:services/device/public/cpp/hid/hid_report_utils.cc:137@1aeca202#HasReportInAlwaysProtectedCollection; chromium:services/device/hid/hid_connection.cc:220@1aeca202#kWebHidRecursiveFiltering; chromium:services/device/public/cpp/device_features.cc:140@1aeca202#kWebHidRecursiveFiltering | likely |
+| WebUSB's protected interface classes are audio, HID, mass storage, smart card, video, audio/video and wireless controller; claiming one fails with a SecurityError. | chromium:content/browser/usb/web_usb_service_impl.cc:249@1aeca202#kUsbHidClass; chromium:services/device/usb/mojo/device_impl.cc:512@1aeca202#kProtectedClass; chromium:third_party/blink/renderer/modules/webusb/usb_device.cc:1008@1aeca202#kProtectedInterfaceClassError | likely |
+| Chrome changes that class list only for extension origins; an Isolated Web App holding the usb-unrestricted permission (behind a feature flag) has no protected classes. A normal web page is neither. | chromium:chrome/browser/usb/chrome_usb_delegate.cc:183@1aeca202#AdjustProtectedInterfaceClasses; chromium:content/browser/usb/web_usb_service_impl.cc:262@1aeca202#kUsbUnrestricted | likely |
+| A WebUSB control transfer with recipient "interface" needs that interface claimed first (checked in Blink); recipient "device" needs no claim. | chromium:third_party/blink/renderer/modules/webusb/usb_device.cc:856@1aeca202#EnsureInterfaceClaimed | likely |
+| The device service refuses a class request with recipient "device" when any interface of the active configuration is in a protected class. HID GET_REPORT and SET_REPORT are class requests (HID 1.11, section 7.2), and all six 02A7 interfaces are HID class. The check runs only while the protected-class control-transfer flag is on, its default at the pinned commit. Chromium commit 89b42d2d33 (main position 1601756, 2026-03-19) added that flag and began refusing vendor and class requests with recipient device whose wIndex low byte names a protected interface; before it, device-recipient requests were not checked. Commit b334f9d5a8 (main position 1658378, 2026-07-07) widened the class-request refusal to any wIndex on a device with a protected interface. The probe's 6b names interface 3 in wIndex, so 89b42d2d33 is the cut-off for it: by chromiumdash branch positions M147 branched before that commit and M148 after, so M148 is the first milestone that refuses 6b ([HYPOTHESIS] unless it was merged back to M147). | chromium:services/device/usb/mojo/device_impl.cc:353@1aeca202#HasProtectedInterface; chromium:services/device/usb/mojo/device_impl.cc:238@1aeca202#FindBlockedClass; chromium:services/device/usb/mojo/device_impl.cc:224@1aeca202#kWebUsbProtectedClassControlTransferBlock; chromium:services/device/public/cpp/device_features.cc:56@1aeca202#kWebUsbProtectedClassControlTransferBlock; chromium:services/device/public/cpp/device_features.cc:57@1aeca202#FEATURE_ENABLED_BY_DEFAULT; url:https://www.usb.org/sites/default/files/hid1_11.pdf; url:https://chromium.googlesource.com/chromium/src/+/89b42d2d3326ebad6e0494009d5d92f2dbaf12ef; url:https://chromium.googlesource.com/chromium/src/+/b334f9d5a8d0a54b39b0f17aa2149cdb3fd7feab; url:https://chromiumdash.appspot.com/fetch_milestones; probe:.ai_context/knowledge/hid-02a7-macos.txt#IOUSBHostInterface@0; probe:.ai_context/knowledge/hid-02a7-macos.txt#IOUSBHostInterface@1; probe:.ai_context/knowledge/hid-02a7-macos.txt#IOUSBHostInterface@2; probe:.ai_context/knowledge/hid-02a7-macos.txt#IOUSBHostInterface@3; probe:.ai_context/knowledge/hid-02a7-macos.txt#IOUSBHostInterface@4; probe:.ai_context/knowledge/hid-02a7-macos.txt#IOUSBHostInterface@5 | likely |
+| In the device service, vendor-type requests with recipient "device" are always allowed. A standard GET_DESCRIPTOR read (device to host) passes for any recipient while the standard-request allowlist flag is on, its default at the pinned commit; with that flag off it passes for recipient device or other, and interface or endpoint recipients go through the protected-class check. Blink's claim check applies before either. | chromium:services/device/usb/mojo/device_impl.cc:392@1aeca202#kAllowed; chromium:services/device/usb/mojo/device_impl.cc:277@1aeca202#kWebUsbEnforceStandardRequestAllowlist; chromium:services/device/usb/mojo/device_impl.cc:285@1aeca202#kUsbRequestGetDescriptor; chromium:services/device/usb/mojo/device_impl.cc:295@1aeca202#DEVICE; chromium:services/device/usb/mojo/device_impl.cc:301@1aeca202#INTERFACE; chromium:services/device/public/cpp/device_features.cc:63@1aeca202#kWebUsbEnforceStandardRequestAllowlist; chromium:services/device/public/cpp/device_features.cc:64@1aeca202#FEATURE_ENABLED_BY_DEFAULT | likely |
+| OpenRGB issue 4418 (02A7 lighting support) has no USB or HID descriptor dump: its body gives one Windows HidUsb device path, on interface MI_02, and links six captures taken with Razer's software; no note holds lsusb output or a report descriptor. | openrgb#4418:MI_02 | likely |
+
+### Interfaces on macOS
+
+The owner's Mac lists five HID devices for the keyboard; USB interface 3 is the
+missing one. Sizes are as decoded in the dump.
+
+| Interface | Class | Driver | Usage page/usage | Reports | Source |
+|---|---|---|---|---|---|
+| 0 | 3 (HID) | Apple HID driver + Razer DriverKit event service | 0x01/0x06 boot keyboard | input 8 B, output 1 B, no report IDs | probe:.ai_context/knowledge/hid-02a7-macos.txt#IOUSBHostInterface@0; probe:.ai_context/knowledge/hid-02a7-macos.txt#kbd-boot |
+| 1 | 3 (HID) | Apple HID driver + Razer DriverKit event service | seven top-level collections: 0x01/0x06, 0x0C/0x01, 0x01/0x80, four of 0x01/0x00 | 47 B inputs with IDs 1, 2, 3, 4, 5, 7, 11; output ID 1 (1 B) | probe:.ai_context/knowledge/hid-02a7-macos.txt#IOUSBHostInterface@1; probe:.ai_context/knowledge/hid-02a7-macos.txt#kbd-multi |
+| 2 | 3 (HID) | Apple HID driver + Razer DriverKit event service | 0x01/0x02 mouse | input 8 B | probe:.ai_context/knowledge/hid-02a7-macos.txt#IOUSBHostInterface@2; probe:.ai_context/knowledge/hid-02a7-macos.txt#kbd-mouse |
+| 3 | 3 (HID) | none bound | not exposed | not visible to the HID stack | probe:.ai_context/knowledge/hid-02a7-macos.txt#IOUSBHostInterface@3 |
+| 4 | 3 (HID) | Apple HID driver | 0x59/0x01 LampArray | feature IDs 1 to 6: 22, 2, 28, 50, 9, 1 B | probe:.ai_context/knowledge/hid-02a7-macos.txt#IOUSBHostInterface@4; probe:.ai_context/knowledge/hid-02a7-macos.txt#kbd-lamparray |
+| 5 | 3 (HID) | Apple HID driver | 0xFF00/0x00 vendor | input and output 64 B, no report IDs | probe:.ai_context/knowledge/hid-02a7-macos.txt#IOUSBHostInterface@5; probe:.ai_context/knowledge/hid-02a7-macos.txt#kbd-vendor |
+
+Interface 3 is the one zexrox drives on Windows. Why macOS binds nothing to it
+is open; [HYPOTHESIS] it lacks the interrupt-IN endpoint the HID driver needs,
+or its descriptor is rejected.
+
+### Protected collections
+
+Chrome's WebHID rules from the claims above, applied to what macOS exposes
+([HYPOTHESIS] that Chrome sees the same collections the dump lists):
+
+- Interface 0 (boot keyboard): input and output protected, no feature reports,
+  so nothing is usable.
+- Interface 1: the keyboard collection (0x01/0x06) is protected for input and
+  output, the System Control collection (0x01/0x80) entirely. The Consumer
+  collection (0x0C/0x01, input 2) and the four 0x01/0x00 collections (inputs
+  4, 5, 7 and 11) are unprotected, so a page may read them; zexrox watches
+  this interface for the Fn key.
+- Interface 2 (mouse): input protected.
+- Interface 3: not exposed by macOS, so these rules never come into play.
+- Interface 4 (LampArray, usage page 0x59): unprotected; its six feature
+  reports are open to WebHID. This is the standard lighting path, documented
+  in the LampArray section.
+- Interface 5 (vendor page 0xFF00): unprotected 64-byte input and output
+  reports of unknown purpose.
+
+WebUSB: every 02A7 interface is HID class, a protected class, so claiming any
+of them fails, and without a claim a page cannot send interface-recipient
+control transfers to them.
+
+### Transport options
+
+Facts and open points for the follow-up task, which makes the choice.
+
+- (a) WebUSB: class GET_REPORT / SET_REPORT on the default control pipe with
+  wIndex 3. The read-only probe page now on master (src/probe/usb.ts) opens
+  the device, records every interface's endpoints from the configuration
+  descriptor, tries to claim interface 3 and then, whether or not the claim
+  succeeded, makes four reads: 6a, class GET_REPORT for feature report 0
+  (wValue 0x0300) with recipient interface; 6b, the same with recipient
+  device; 6c, standard GET_DESCRIPTOR for the HID report descriptor (wValue
+  0x2200) with recipient interface; 6d, the same with recipient device. The
+  owner has not run it, so every result is pending. What the pinned Chromium
+  code predicts, each point [HYPOTHESIS] (a prediction, not an observation):
+  the claim fails with a SecurityError, HID being a protected class; 6a and
+  6c are refused in Blink, as interface-recipient transfers to an unclaimed
+  interface; 6b reaches the device service and is refused there, a class
+  request with recipient device on a device whose interfaces are all
+  protected, while the protected-class control-transfer flag is on (its
+  default), so it passes only if that flag is off or the owner's Chrome
+  predates 89b42d2d33 (M148, by branch positions); 6d passes Chromium whether the standard-request
+  allowlist flag is on or off, and whether the firmware answers it is
+  unknown. Vendor-type device requests also pass, but HID GET_REPORT and
+  SET_REPORT are class requests, and whether the firmware answers anything
+  else is unknown.
+- (b) Native access, for example a Tauri desktop app using IOKit or libusb.
+  Interface 3 has no driver bound on macOS, so a native app should be able to
+  claim it without detaching a driver ([HYPOTHESIS] until tested). zexrox
+  shows the same channel working natively on Windows through hidapi.
+- (c) WebHID for what macOS exposes: LampArray lighting on interface 4, the
+  unprotected inputs of interface 1 and the vendor reports of interface 5. It
+  cannot reach the control channel.
+
+### Open questions
+
+- Does the owner's Chrome include commit 89b42d2d33 (M148 or later, by the
+  branch positions above), and does a field trial override the default of
+  either WebUSB flag? Both are on by default at the pinned commit.
+- Does WebUSB open() succeed on macOS for a device whose other interfaces have
+  HID drivers bound?
+- What does interface 3 declare (endpoints, HID report descriptor, usage
+  page)? The probe records the endpoints from the configuration descriptor,
+  which needs no transfer, and its 6d read is the one report-descriptor
+  request the pinned Chromium code lets through; whether the firmware answers
+  a device-recipient report-descriptor request is unknown.
+- Why does macOS bind no driver to interface 3?
+- What do interface 5's vendor reports and interface 1's 0x01/0x00 inputs
+  carry?
+- OpenRGB 4418's six Windows captures were not downloaded; they may show which
+  interface Razer's software uses for lighting. The issue was closed by merge
+  request 2627, built by adding the keyboard to OpenRGB's existing Razer
+  controller; the reporter tested those builds and, after a few layout fixes,
+  reported the lighting working; the reporter thought two small buttons share one zone
+  (openrgb#4418:existing, openrgb#4418:charm). Which interface that controller opens for the 02A7 was
+  not read.
+
 ## Commands
 
 Synapse declares every command as a three-byte triple: data size, command
@@ -309,3 +444,11 @@ c1e6a425. Full hashes of every source file are in `tools/sources.manifest.json`.
 the checker can detect a changed citation without downloading the sources.
 Facts are written in this document's own words; no source code is copied
 (Synapse is proprietary, zexrox is MIT).
+
+Chromium (BSD license; read for facts only) is pinned at commit
+1aeca202fed13742d05b130fcb49e418f98fc4ca, fetched file by file from its GitHub
+mirror; the cited files and their sha256 are in the manifest. The OpenRGB issue
+4418 thread was saved on 2026-10-14 from GitLab: the issue through its API, the
+notes through the public discussions endpoint, because the notes API needs a
+login. The owner's macOS dump is part of this repo:
+`.ai_context/knowledge/hid-02a7-macos.txt`.

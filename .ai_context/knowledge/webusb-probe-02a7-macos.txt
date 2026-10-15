@@ -1,0 +1,35 @@
+RZ03-0498 (USB 1532:02A7) read-only probe run by the owner: macOS, Microsoft Edge 153 (Chromium 153), 2026-10-15.
+Source: probe.html (src/probe/, merged in PR #2), "複製報告" JSON pasted by the owner; summarised here.
+The probe records no serial number and writes nothing to the device. Browser error messages are paraphrased.
+
+== WebUSB: device ==
+device: USB 2.0.0, deviceVersion 1.0.1, device class 0/0/0, one configuration (value 1, active), six interfaces
+if0.endpoints: class 3/1/1, EP1 IN interrupt 8 B
+if1.endpoints: class 3/0/1, EP2 IN interrupt 48 B
+if2.endpoints: class 3/1/2, EP3 IN interrupt 8 B
+if3.endpoints: class 3/0/0, EP3 OUT interrupt 8 B; this is its only endpoint, it has no IN endpoint
+if4.endpoints: class 3/0/1, EP4 IN interrupt 2 B
+if5.endpoints: class 3/0/0, EP5 IN interrupt 64 B and EP5 OUT interrupt 64 B
+
+== WebUSB: steps ==
+4.open: ok
+5.claimInterface (interface 3): SecurityError, interface 3 is a protected class
+6a.getFeatureReport.interface: GET_REPORT feature 0x0300, class, recipient interface, wIndex 3, 90 B: InvalidStateError, interface not claimed
+6b.getFeatureReport.device: GET_REPORT feature 0x0300, class, recipient device, wIndex 3, 90 B: SecurityError, transfer not allowed
+6c.getReportDescriptor.interface: GET_DESCRIPTOR 0x2200, standard, recipient interface, wIndex 3: InvalidStateError, interface not claimed
+6d.getReportDescriptor.device: GET_DESCRIPTOR 0x2200, standard, recipient device, wIndex 3: ok, 22 bytes returned
+if3.reportDescriptor (from 6d): 05 0c 09 01 a1 01 06 00 ff 09 02 15 00 25 01 75 08 95 5a b1 01 c0
+  decoded: Usage Page 0x0C (Consumer), Usage 0x01, Collection (Application); Usage Page 0xFF00, Usage 0x02;
+  Logical Minimum 0, Logical Maximum 1; Report Size 8, Report Count 90; Feature (Constant); End Collection
+  = one application collection 0x000C/0x0001 holding a single 90-byte feature report with no report ID.
+  It matches none of the five descriptors in hid-02a7-macos.txt, so it is taken to be interface 3's
+  (the device answered a device-recipient request using wIndex 3).
+7.close and 7.forget: ok
+
+== WebHID (requestDevice filter 1532:02A7: 4 HID devices offered) ==
+webhid.lamparray offered: 0x0059/0x0001 with feature ids 1-6 = 22, 2, 28, 50, 9, 1 B; children 0x02, 0x20, 0x22, 0x50, 0x60, 0x70
+webhid.multi offered: 0x000C/0x0001 input id2 47 B; 0x0001/0x0000 inputs id4, id5, id7, id11, 47 B each
+  (the kbd-multi interface of hid-02a7-macos.txt without its 0x01/0x06 id1 and 0x01/0x80 id3 collections)
+webhid.mouse offered: 0x0001/0x0002 with child 0x0001/0x0001, input id0 8 B
+webhid.vendor offered: 0xFF00/0x0000 input id0 64 B, output id0 64 B
+webhid.notOffered: the boot keyboard (0x01/0x06, interface 0) and interface 3

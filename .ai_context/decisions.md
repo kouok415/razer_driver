@@ -85,3 +85,35 @@ new entry that references and supersedes the old one.
 - **Consequences:** Everything committed, including `.ai_context/`, is
   public — the H1/L1 rules and the gitleaks pre-commit hook carry real
   weight. Any client-side routing must be hash-based or relative.
+
+## ADR-003: Native desktop app (Tauri) for the keyboard's control channel
+
+- **Date:** 2026-10-15
+- **Status:** Accepted (owner, 2026-10-15). Supersedes ADR-001's premise
+  that a static WebHID page can reach the control channel; ADR-001's
+  TypeScript + React + Vite UI stack stands.
+- **Context:** Every setting beyond lighting (actuation, Rapid Trigger,
+  Snap Tap, keymap, Hypershift, macros, profiles, polling, onboard effects)
+  goes over 90-byte feature reports on USB interface 3. On macOS no HID
+  driver binds to it (`knowledge/hid-02a7-macos.txt`; its only endpoint is
+  interrupt OUT), so WebHID never lists it. The owner's read-only probe
+  (Edge 153, `knowledge/webusb-probe-02a7-macos.txt`) showed WebUSB
+  refusing the claim and every class GET_REPORT, as pinned Chromium code
+  predicts (`knowledge/protocol.md` § Control interface).
+- **Decision:** The follow-up task builds a Tauri desktop app for macOS
+  that opens interface 3 natively (IOKit or libusb; claiming the
+  driverless interface is [HYPOTHESIS] until tested). This was the owner's
+  stated fallback, chosen before the probe ran.
+- **Rationale:** No browser path reaches interface 3. Only LampArray
+  lighting (interface 4) is reachable from WebHID.
+- **Alternatives considered:** WebUSB (refused by Chromium); WebHID
+  (interface 3 not enumerated); a web UI plus a local native helper, as
+  zexrox does on Windows (still a native install, with two parts to ship
+  and keep in sync).
+- **Consequences:** Tauri's macOS webview has no WebHID, so the app drives
+  lighting natively too. Distribution needs signing and notarization or a
+  Gatekeeper override. CLAUDE.md's project description, Verify and DoD
+  must be rewritten for a desktop app in the follow-up task, and the E2E
+  simulator moves behind the native transport boundary. Whether the
+  GitHub Pages build stays (e.g. probe page, lighting-only tool) is decided
+  when that task is planned.

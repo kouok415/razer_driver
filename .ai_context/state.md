@@ -6,12 +6,15 @@ _Last updated: 2026-10-14_
 
 ## Now
 
-Task `protocol-reference` (branch `task/protocol-reference`): M1–M5 done — checker,
-citation lock, and `knowledge/protocol.md` framing / status / device-info commands /
-golden packets / control interface; M6 (actuation, Rapid Trigger, Snap Tap) next. Pinned
-Chromium predicts WebUSB cannot reach interface 3 (Chrome M148+). Read-only probe page is live
-(`probe.html`); WebHID cannot reach USB interface 3 on macOS
-(`knowledge/hid-02a7-macos.txt`). Waiting on the owner's WebUSB probe report.
+Task `protocol-reference` (branch `task/protocol-reference`): M1–M5 done, M6 under
+verification. Owner ran the read-only probe 2026-10-15 (Edge 153, macOS;
+`knowledge/webusb-probe-02a7-macos.txt`): WebUSB cannot reach the interface-3 control
+channel (claim refused, class GET_REPORT refused for interface and device recipients);
+only a device-recipient GET_DESCRIPTOR got through and returned interface 3's report
+descriptor (Consumer 0x0C collection, one 90-byte feature report; its only endpoint is
+interrupt OUT). WebHID offers LampArray (if4), if1 inputs, mouse and vendor FF00 — not
+if3. Per the owner's earlier choice, the follow-up uses a desktop app (Tauri) for the
+control channel; LampArray lighting can stay on WebHID.
 
 ## Next steps
 

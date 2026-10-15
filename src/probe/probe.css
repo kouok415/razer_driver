@@ -1,0 +1,54 @@
+.probe [lang='en'] {
+  opacity: 0.8;
+}
+
+.probe h1 span[lang='en'],
+.probe h2 span[lang='en'],
+.probe label span[lang='en'] {
+  font-weight: 400;
+}
+
+.probe h1 span[lang='en'] {
+  display: block;
+  font-size: 0.6em;
+}
+
+.probe-safety {
+  border-left: 4px solid #2f9e57;
+  padding: 4px 0 4px 12px;
+}
+
+.probe-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.probe button {
+  font: inherit;
+  padding: 10px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.probe button:disabled {
+  cursor: progress;
+}
+
+.probe-status {
+  min-height: 1.5em;
+}
+
+.probe label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.probe textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 24em;
+  font: 13px/1.4 ui-monospace, 'SF Mono', Menlo, monospace;
+}

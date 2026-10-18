@@ -28,12 +28,29 @@ lens; same verdict format:
 - **correctness vs spec** — re-run the ACs; observe the behavior
   directly, don't read about it.
 - **regression & side effects** — what else could this diff break? Run
-  the suite/build; probe the neighbors of changed code.
+  the suite/build; probe the neighbors of changed code. Name the one fact
+  that makes the diff safe and prove it by running code, not reading it;
+  look where grep can't see — serialized formats, DB/CSV/parquet schemas,
+  config flags, other programs reading the same bytes, persisted state.
+  Report confirmed risks apart from checked-and-cleared ones. A second way
+  to do what the code already does one way, or a new list someone must
+  keep in sync by hand, is a finding: the next agent copies whichever it
+  sees first.
 - **test-integrity** — were tests weakened? Loosened assertions, skips,
-  tolerances count as FAIL unless spec.md justifies them. Also audit the
+  tolerances count as FAIL unless spec.md justifies them. Each new or
+  changed test must go red if the behavior breaks and stay green under a
+  behavior-preserving internal change; one that fails either check while
+  being an AC's only proof is a FAIL (usual causes: a loose assertion, an
+  expected value computed by the code under test, a copied constant whose
+  reader never runs, asserting on the test's own fixtures). Also audit the
   spec's history: `git log -p -- .ai_context/tasks/<slug>/spec.md` — an
   unexplained mid-run weakening of acceptance criteria is a FAIL (rung-4
   reframer patches are legitimate only with a matching lessons.md entry).
+  Same audit for verify commands: in `gatelog` (TAB: ts, milestone,
+  verdict, command), a milestone whose PASS ran a command none of its
+  FAILs ran had its gate moved — narrowed scope, a dropped check, or a
+  looser threshold with no lessons.md line explaining it is a FAIL;
+  repairing a broken command is fine.
 
 Orientation: read `brief.md` for where things live instead of
 re-surveying — but the brief is navigation, not evidence. Verdicts cite

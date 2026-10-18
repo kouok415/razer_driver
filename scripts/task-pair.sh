@@ -596,10 +596,12 @@ packet() {
         printf 'brief.md. Rules that make convergence real:\n'
         printf -- '- every finding carries a checkable claim (a command, a file:line, an AC id);\n'
         printf '  a finding without one is at most minor;\n'
-        printf -- '- a finding the ledger shows as rejected may be re-raised ONLY with new\n'
-        printf '  evidence — cite it, or drop it;\n'
+        printf -- '- a finding the ledger shows as rejected or noted may be re-raised ONLY\n'
+        printf '  with new evidence — cite it, or drop it;\n'
         printf -- '- verdict pass means: no blocker and no major finding remain. Minor findings\n'
-        printf '  do not block.\n'
+        printf '  do not block;\n'
+        printf -- '- checklist 1 is observed, not reasoned: run each risk: low verify that clears\n'
+        printf '  checklist 7 on the current tree and list `M<n>: <command> → exit <code>`.\n'
         printf '\n## Acceptance criteria (spec.md)\n'; acceptance_criteria
         printf '\n## Candidate (frozen, digest %s)\n\n' "$base"
         sed 's/^/    /' "$candidate"
